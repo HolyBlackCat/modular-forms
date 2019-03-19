@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -9,6 +10,8 @@
 
 #include "input/enum.h"
 #include "utils/mat.h"
+
+union SDL_Event;
 
 namespace Interface
 {
@@ -114,7 +117,7 @@ namespace Interface
         void SetMode(FullscreenMode new_mode); // If the window is not resizable, then `borderless_fullscreen` (which requires a window resize) acts as `fullscreen`.
         FullscreenMode Mode() const;
 
-        void ProcessEvents();
+        void ProcessEvents(std::function<void(const SDL_Event &)> func = 0);
         void SwapBuffers();
 
         // Those counters start from 1.

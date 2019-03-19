@@ -355,7 +355,7 @@ namespace Interface
         return data.mode;
     }
 
-    void Window::ProcessEvents()
+    void Window::ProcessEvents(std::function<void(const SDL_Event &)> func)
     {
         data.tick_counter++;
 
@@ -366,6 +366,9 @@ namespace Interface
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
+            if (func)
+                func(event);
+
             switch (event.type)
             {
               case SDL_QUIT:
