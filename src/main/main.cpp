@@ -112,22 +112,24 @@ int main()
             });
 
             if (window.Resized())
-            {
                 Graphics::Viewport(window.Size());
-                std::cout << "Resized.\n";
-            }
             if (window.ExitRequested())
                 Program::Exit();
 
             ImGui_ImplOpenGL2_NewFrame();
             ImGui_ImplSDL2_NewFrame(window.Handle());
             ImGui::NewFrame();
+
             state->Tick();
+
+            ImGui::Render();
         }
 
         Graphics::Clear();
-        if (auto draw_data = ImGui::GetDrawData())
-            ImGui_ImplOpenGL2_RenderDrawData(draw_data);
+
+        if (window.Ticks() > 1)
+            ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+
         window.SwapBuffers();
     }
 }
