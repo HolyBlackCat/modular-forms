@@ -85,6 +85,7 @@
 		<Unit filename="lib/imgui.cpp" />
 		<Unit filename="lib/imgui_demo.cpp" />
 		<Unit filename="lib/imgui_draw.cpp" />
+		<Unit filename="lib/imgui_freetype.cpp" />
 		<Unit filename="lib/imgui_impl_opengl2.cpp" />
 		<Unit filename="lib/imgui_impl_sdl.cpp" />
 		<Unit filename="lib/imgui_widgets.cpp" />
