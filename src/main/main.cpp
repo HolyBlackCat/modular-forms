@@ -353,10 +353,14 @@ namespace Widgets
     {
         inline static constexpr const char *internal_name = "checkbox_list";
 
+        ReflectStruct(CheckBox,(
+            (std::string)(label),
+            (bool)(state)(=0),
+        ))
+
         Reflect(CheckBoxList)
         (
-            (std::vector<std::string>)(labels),
-            (std::optional<std::vector<int>>)(initial_selection),
+            (std::vector<CheckBox>)(list),
             (std::optional<bool>)(packed),
         )
 
@@ -365,25 +369,12 @@ namespace Widgets
             bool state = 0;
         };
 
-        std::vector<State> current_state; // Can't use a vector of `bool` directly, as `ImGui::Checkbox` expects actual `bool`s, ugh!
         int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the column width on the first `Display()` call. Otherwise it stays at 0.
 
         void Init() override
         {
-            if (labels.size() == 0)
+            if (list.size() == 0)
                 Program::Error("A checkbox list must contain at least one checkbox.");
-
-            current_state.resize(labels.size());
-
-            if (initial_selection)
-            {
-                for (int x : *initial_selection)
-                {
-                    if (x < 1 || x > int(labels.size()))
-                        Program::Error("Index of a checkbox to be selected by default is out of range.");
-                    current_state[x-1].state = true;
-                }
-            }
 
             // We can't calculate a proper button width here, as fonts don't seem to be loaded this early.
             if (packed && *packed)
@@ -394,15 +385,15 @@ namespace Widgets
         {
             if (size_x == -1)
             {
-                for (const std::string &str : labels)
-                    clamp_var_min(size_x, ImGui::CalcTextSize(str.c_str()).x);
+                for (const CheckBox &elem : list)
+                    clamp_var_min(size_x, ImGui::CalcTextSize(elem.label.c_str()).x);
 
                 size_x += ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.x + ImGui::GetStyle().ItemInnerSpacing.x;
             }
 
             int columns = size_x ? clamp_min(int(ImGui::GetWindowContentRegionWidth()) / size_x, 1) : 1;
-            int elems_per_column = columns != 1 ? (labels.size() + columns - 1) / columns : labels.size();
-            columns = (labels.size() + elems_per_column - 1) / elems_per_column;
+            int elems_per_column = columns != 1 ? (list.size() + columns - 1) / columns : list.size();
+            columns = (list.size() + elems_per_column - 1) / elems_per_column;
 
             ImGui::Columns(columns, 0, 0);
 
@@ -413,10 +404,10 @@ namespace Widgets
             {
                 for (int j = 0; j < elems_per_column; j++)
                 {
-                    if (elem_index >= int(labels.size()))
+                    if (elem_index >= int(list.size()))
                         break; // I don't think we want to terminate the outer loop early. We want to use all columns no matter what.
 
-                    ImGui::Checkbox(Str(Data::EscapeStringForWidgetName(labels[elem_index]), "###", index, ":", elem_index).c_str(), &current_state[elem_index].state);
+                    ImGui::Checkbox(Str(Data::EscapeStringForWidgetName(list[elem_index].label), "###", index, ":", elem_index).c_str(), &list[elem_index].state);
                     elem_index++;
                 }
 
@@ -434,11 +425,10 @@ namespace Widgets
         Reflect(RadioButtonList)
         (
             (std::vector<std::string>)(labels),
-            (std::optional<int>)(initial_selection),
+            (int)(selected)(=0),
             (std::optional<bool>)(packed),
         )
 
-        int current_selection = 0;
         int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the column width on the first `Display()` call. Otherwise it stays at 0.
 
         void Init() override
@@ -446,12 +436,8 @@ namespace Widgets
             if (labels.size() == 0)
                 Program::Error("A checkbox list must contain at least one checkbox.");
 
-            if (initial_selection)
-            {
-                current_selection = *initial_selection;
-                if (current_selection < 1 || current_selection > int(labels.size()))
-                    Program::Error("Index of a radio button to be selected by default is out of range.");
-            }
+            if (selected < 0 || selected > int(labels.size())) // Sic.
+                Program::Error("Index of a selected radio button is out of range.");
 
             // We can't calculate a proper button width here, as fonts don't seem to be loaded this early.
             if (packed && *packed)
@@ -484,7 +470,7 @@ namespace Widgets
                     if (elem_index >= int(labels.size()))
                         break; // I don't think we want to terminate the outer loop early. We want to use all columns no matter what.
 
-                    ImGui::RadioButton(Str(Data::EscapeStringForWidgetName(labels[elem_index]), "###", index, ":", elem_index).c_str(), &current_selection, elem_index+1);
+                    ImGui::RadioButton(Str(Data::EscapeStringForWidgetName(labels[elem_index]), "###", index, ":", elem_index).c_str(), &selected, elem_index+1);
                     elem_index++;
                 }
 
@@ -494,6 +480,46 @@ namespace Widgets
             }
         }
     };
+
+//    struct TextInput : Data::WidgetBase<TextInput>
+//    {
+//        inline static constexpr const char *internal_name = "text_input";
+//
+//        Reflect(TextInput)
+//        (
+//            (std::string)(label),
+//            (int)(max_bytes),
+//            (std::optional<std::string>)(initial_value),
+//            (std::optional<std::string>)(hint),
+//        )
+//
+//        // This is null-terminated. We use a vector because ImGui wants a fixed-size buffer.
+//        // It's probably possible to somehow plug `std::string` in there, but I don't want to bother.
+//        std::vector<char> current_value;
+//
+//        void Init() override
+//        {
+//            if (initial_value)
+//            {
+//                if (int(initial_value->size()) > max_bytes)
+//                    Program::Error("Initial value for a text input box has more symbols than the selected max amount.");
+//                current_value = *initial_value;
+//            }
+//        }
+//
+//        void Display(int index) override
+//        {
+//            bool value_changed = 0;
+//
+//            if (hint) // Note `tmp.size()+1` below. It's because `std::string` also includes space for a null-terminator.
+//                value_changed = ImGui::InputTextWithHint(Str(Data::EscapeStringForWidgetName(label), "###", index).c_str(), hint->c_str(), tmp.data(), tmp.size()+1);
+//            else
+//                value_changed = ImGui::InputText(Str(Data::EscapeStringForWidgetName(label), "###", index).c_str(), tmp.data(), tmp.size()+1);
+//
+//            if (value_changed)
+//                current_value = tmp.c_str(); // Note the `.c_str()`. It's needed to cut unnecessary bytes at the end of fixed-width `tmp` string.
+//        }
+//    };
 }
 
 struct State
@@ -682,6 +708,8 @@ struct StateMain : State
         first_tick = 0;
         first_tick_at_this_step = finishing_step_at_this_tick;
         finishing_step_at_this_tick = 0;
+
+        // ImGui::ShowDemoWindow();
     }
 };
 
