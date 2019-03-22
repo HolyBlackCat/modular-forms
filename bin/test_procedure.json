@@ -4,7 +4,7 @@
     "steps" : [
         {
             "name" : "Название шага 1",
-			"confirm" : true,
+            "confirm" : true,
             "widgets" : [
                 {
                     "type" : "text",
@@ -94,17 +94,50 @@
                     "type" : "checkbox_list",
                     "data" : {
                         "list" : [
-                            {"label":"Набор","state":false},
-                            {"label":"плотно","state":false},
-                            {"label":"упакованных","state":false},
-                            {"label":"галочек","state":false},
-                            {"label":"галочек","state":false},
-                            {"label":"галочек","state":false},
-                            {"label":"галочек","state":false},
-                            {"label":"галочек","state":false},
-                            {"label":"галочек","state":false},
-                            {"label":"галочек","state":false},
-                            {"label":"галочек","state":false},
+                            {
+                                "label" : "Набор",
+                                "state" : false,
+                            },
+                            {
+                                "label" : "плотно",
+                                "state" : false,
+                            },
+                            {
+                                "label" : "упакованных",
+                                "state" : false,
+                            },
+                            {
+                                "label" : "галочек",
+                                "state" : false,
+                            },
+                            {
+                                "label" : "галочек",
+                                "state" : false,
+                            },
+                            {
+                                "label" : "галочек",
+                                "state" : false,
+                            },
+                            {
+                                "label" : "галочек",
+                                "state" : false,
+                            },
+                            {
+                                "label" : "галочек",
+                                "state" : false,
+                            },
+                            {
+                                "label" : "галочек",
+                                "state" : false,
+                            },
+                            {
+                                "label" : "галочек",
+                                "state" : false,
+                            },
+                            {
+                                "label" : "галочек",
+                                "state" : false,
+                            },
                         ],
                         "packed" : true,
                     },
@@ -134,7 +167,7 @@
                 },
             ],
         },
-		{
+        {
             "name" : "Название шага 2",
             "widgets" : [
                 {
@@ -145,38 +178,368 @@
                 },
             ],
         },
-		{"name" : "Название шага 3", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 4", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 5", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 6", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 7", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 8", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 9", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 10", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 11", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 12", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 13", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 14", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 15", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 16", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 17", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 18", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 19", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 20", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 21", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 22", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 23", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 24", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 25", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 26", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 27", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 28", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-        {"name" : "Название шага 29", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-        {"name" : "Название шага 30", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 31", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 32", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 33", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 34", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
-		{"name" : "Название шага 35", "widgets" : [{"type" : "text", "data" : {"text" : "Текст"}}]},
+        {
+            "name" : "Название шага 3",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 4",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 5",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 6",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 7",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 8",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 9",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 10",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 11",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 12",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 13",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 14",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 15",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 16",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 17",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 18",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 19",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 20",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 21",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 22",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 23",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 24",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 25",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 26",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 27",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 28",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 29",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 30",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 31",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 32",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 33",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 34",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 35",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {
+                        "text" : "Текст",
+                    },
+                },
+            ],
+        },
     ],
 }

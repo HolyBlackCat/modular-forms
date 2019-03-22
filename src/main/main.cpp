@@ -1,7 +1,10 @@
 #include <iostream>
 
+#include <iomanip>
 #include <map>
 #include <optional>
+#include <typeinfo>
+#include <typeindex>
 #include <vector>
 
 #include "interface/window.h"
@@ -14,6 +17,7 @@
 #include "utils/mat.h"
 #include "utils/meta.h"
 #include "utils/metronome.h"
+#include "utils/unicode.h"
 
 #include <imgui.h>
 #include <imgui_freetype.h>
@@ -97,25 +101,45 @@ namespace Data
     };
 
     template <typename T> T ReflectedObjectFromJson(Json::View view);
+    template <typename T> void ReflectedObjectToJsonLow(const T &object, int indent_steps, int indent_step_w, std::string &output);
 
     struct WidgetInternalFunctions
     {
         using Widget = Dyn<WidgetBase_Low, WidgetInternalFunctions>;
 
+        bool is_reflected = 0;
+        const char *internal_name = 0;
         void (*from_json)(Dynamic::Param<WidgetBase_Low>, Json::View, std::string);
+        void (*to_json)(Dynamic::Param<const WidgetBase_Low>, int, int, std::string &);
 
         template <typename T> constexpr void _make()
         {
+            is_reflected = Refl::is_reflected<T>;
+            internal_name = T::internal_name;
             from_json = [](Dynamic::Param<WidgetBase_Low> obj, Json::View view, std::string elem_name)
             {
                 if constexpr (Refl::is_reflected<T>)
                     obj.template get<T>() = ReflectedObjectFromJson<T>(view[elem_name]);
             };
+            to_json = [](Dynamic::Param<const WidgetBase_Low> obj, int indent_steps, int indent_step_w, std::string &str)
+            {
+                if constexpr (Refl::is_reflected<T>)
+                {
+                    ReflectedObjectToJsonLow(obj.template get<T>(), indent_steps, indent_step_w, str);
+                }
+                else
+                {
+                    (void)obj;
+                    (void)indent_steps;
+                    (void)indent_step_w;
+                    (void)str;
+                }
+            };
         }
     };
     using Widget = WidgetInternalFunctions::Widget;
 
-    struct WidgetFactory
+    struct WidgetTypeManager
     {
         template <typename T> friend class WidgetBase;
 
@@ -127,9 +151,9 @@ namespace Data
         }
 
       public:
-        WidgetFactory() {}
+        WidgetTypeManager() {}
 
-        Widget Make(std::string name) const
+        Widget MakeWidget(std::string name) const
         {
             auto it = factory_funcs.find(name);
             if (it == factory_funcs.end())
@@ -137,9 +161,9 @@ namespace Data
             return it->second();
         }
     };
-    WidgetFactory &widget_factory()
+    WidgetTypeManager &widget_type_manager()
     {
-        static WidgetFactory ret;
+        static WidgetTypeManager ret;
         return ret;
     }
 
@@ -166,7 +190,7 @@ namespace Data
         }
         else if constexpr (std::is_same_v<T, Widget>)
         {
-            T ret = widget_factory().Make(view["type"].GetString());
+            T ret = widget_type_manager().MakeWidget(view["type"].GetString());
             ret.funcs().from_json(ret, view, "data");
             ret->Init();
             return ret;
@@ -219,11 +243,186 @@ namespace Data
         }
     }
 
+    // `output` is `void output(const std::string &str)`, it's called repeadetly to compose the JSON.
+    template <typename T> void ReflectedObjectToJsonLow(const T &object, int indent_steps, int indent_step_w, std::string &output)
+    {
+        if constexpr (std::is_same_v<T, bool>)
+        {
+            output += (object ? "true" : "false");
+        }
+        else if constexpr (std::is_same_v<T, std::string>)
+        {
+            output += '"';
+            for (uint32_t ch : Unicode::Iterator(object))
+            {
+                if (ch < ' ')
+                {
+                    switch (ch)
+                    {
+                      case '\\':
+                        output += R"(\\)";
+                        break;
+                      case '"':
+                        output += R"(\")";
+                        break;
+                      case '\b':
+                        output += R"(\b)";
+                        break;
+                      case '\f':
+                        output += R"(\f)";
+                        break;
+                      case '\n':
+                        output += R"(\n)";
+                        break;
+                      case '\r':
+                        output += R"(\r)";
+                        break;
+                      case '\t':
+                        output += R"(\t)";
+                        break;
+                      default:
+                        output += Str(R"(\u)", std::setfill('0'), std::setw(4), std::hex, ch);
+                        break;
+                    }
+                }
+                else
+                {
+                    if (ch <= 0xffff)
+                    {
+                        if (ch < 128)
+                        {
+                            output += char(ch);
+                        }
+                        else if (ch < 2048) // 2048 = 2^11
+                        {
+                            output += char(0b1100'0000 + (ch >> 6));
+                            output += char(0b1000'0000 + (ch & 0b0011'1111));
+                        }
+                        else
+                        {
+                            output += char(0b1110'0000 + (ch >> 12));
+                            output += char(0b1000'0000 + ((ch >> 6) & 0b0011'1111));
+                            output += char(0b1000'0000 + (ch & 0b0011'1111));
+                        }
+                    }
+                }
+            }
+            output += '"';
+        }
+        else if constexpr (std::is_integral_v<T>)
+        {
+            output += std::to_string(object);
+        }
+        else if constexpr (std::is_floating_point_v<T>)
+        {
+            output += Str(std::setprecision(1000000), object); // There ain't such thing as too much precision.
+        }
+        else if constexpr (std::is_same_v<T, Widget>)
+        {
+            std::string indent_step_str(indent_step_w, ' ');
+            std::string cur_indent_str(indent_step_w * indent_steps, ' ');
+
+            output += "{\n";
+            output += cur_indent_str + indent_step_str + R"("type" : ")" + object.funcs().internal_name + R"(",)" + '\n';
+            if (object.funcs().is_reflected)
+            {
+                output += cur_indent_str + indent_step_str + R"("data" : )";
+                object.funcs().to_json(object, indent_steps+1, indent_step_w, output);
+                output += ",\n";
+            }
+
+            output += cur_indent_str + "}";
+        }
+        else if constexpr (Refl::is_reflected<T>)
+        {
+            using refl_t = Refl::Interface<T>;
+            auto refl = Refl::Interface(object);
+
+            std::string indent_step_str(indent_step_w, ' ');
+            std::string cur_indent_str(indent_step_w * indent_steps, ' ');
+
+            if constexpr (refl_t::is_structure)
+            {
+                output += "{\n";
+
+                refl.for_each_field([&](auto index)
+                {
+                    constexpr int i = index.value;
+                    using field_type = typename refl_t::template field_type<i>;
+                    const std::string &field_name = refl.field_name(i);
+                    auto &field_ref = refl.template field_value<i>();
+
+                    if constexpr (!is_std_optional<field_type>::value)
+                    {
+                        output += cur_indent_str + indent_step_str + R"(")" + field_name + R"(" : )";
+                        ReflectedObjectToJsonLow(field_ref, indent_steps+1, indent_step_w, output);
+                        output += ",\n";
+                    }
+                    else
+                    {
+                        if (field_ref)
+                        {
+                            output += cur_indent_str + indent_step_str + R"(")" + field_name + R"(" : )";
+                            ReflectedObjectToJsonLow(*field_ref, indent_steps+1, indent_step_w, output);
+                            output += ",\n";
+                        }
+                    }
+                });
+
+                output += cur_indent_str + "}";
+            }
+            else if constexpr (refl_t::is_container)
+            {
+                output += "[\n";
+
+                refl.for_each_element([&](auto it)
+                {
+                    output += cur_indent_str + indent_step_str;
+                    ReflectedObjectToJsonLow(*it, indent_steps+1, indent_step_w, output);
+                    output += ",\n";
+                });
+
+                output += cur_indent_str + "]";
+            }
+            else
+            {
+                static_assert(Meta::value<false, T>, "This type is not supported.");
+            }
+        }
+        else
+        {
+            static_assert(Meta::value<false, T>, "This type is not supported.");
+        }
+    }
+
+    template <typename T> std::string ReflectedObjectToJson(const T &object)
+    {
+        std::string ret;
+        ReflectedObjectToJsonLow(object, 0, 4, ret);
+        ret += '\n';
+        return ret;
+    }
+
+    template <typename T> bool ReflectedObjectToJsonFile(const T &object, std::string file_name) // Returns 1 on success.
+    {
+        std::string str = ReflectedObjectToJson(object);
+        const uint8_t *ptr = (const uint8_t*)str.data();
+        try
+        {
+            MemoryFile::Save(file_name, ptr, ptr + str.size());
+            return 1;
+        }
+        catch (...)
+        {
+            return 0;
+        }
+    }
+
     // Some trickery to register widgets.
     template <typename T> struct WidgetBase_impl_0 : public WidgetBase_Low
     {
         [[maybe_unused]] inline static int dummy = []{
-            widget_factory().Register<T>(T::internal_name);
+            widget_type_manager().Register<T>(T::internal_name);
             return 0;
         }();
     };
@@ -533,6 +732,7 @@ struct State
 struct StateMain : State
 {
     bool first_tick = 1;
+    std::string current_file_name;
     Data::Procedure proc;
     std::size_t current_step_index = 0;
     bool first_tick_at_this_step = 1;
@@ -565,6 +765,8 @@ struct StateMain : State
         {
             Program::Error("While loading `", file_name, "`: ", e.what());
         }
+
+        current_file_name = file_name;
     }
 
     void Tick() override
@@ -676,6 +878,12 @@ struct StateMain : State
         }
 
         { // Exit modal
+            auto Exit = [&]
+            {
+                Data::ReflectedObjectToJsonFile(proc, current_file_name);
+                Program::Exit();
+            };
+
             if (exit_requested)
             {
                 exit_requested = 0;
@@ -683,7 +891,7 @@ struct StateMain : State
                 if (proc.confirm_exit && *proc.confirm_exit)
                     ImGui::OpenPopup("confirm_exit_modal");
                 else
-                    Program::Exit();
+                    Exit();
             }
 
             if (ImGui::BeginPopupModal("confirm_exit_modal", 0, VisualOptions::modal_window_flags))
@@ -691,7 +899,7 @@ struct StateMain : State
                 ImGui::TextUnformatted("Прервать действие и выйти?");
                 if (ImGui::Button("Выйти"))
                 {
-                    Program::Exit();
+                    Exit();
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();
