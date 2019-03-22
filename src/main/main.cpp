@@ -680,45 +680,54 @@ namespace Widgets
         }
     };
 
-//    struct TextInput : Data::WidgetBase<TextInput>
-//    {
-//        inline static constexpr const char *internal_name = "text_input";
-//
-//        Reflect(TextInput)
-//        (
-//            (std::string)(label),
-//            (int)(max_bytes),
-//            (std::optional<std::string>)(initial_value),
-//            (std::optional<std::string>)(hint),
-//        )
-//
-//        // This is null-terminated. We use a vector because ImGui wants a fixed-size buffer.
-//        // It's probably possible to somehow plug `std::string` in there, but I don't want to bother.
-//        std::vector<char> current_value;
-//
-//        void Init() override
-//        {
-//            if (initial_value)
-//            {
-//                if (int(initial_value->size()) > max_bytes)
-//                    Program::Error("Initial value for a text input box has more symbols than the selected max amount.");
-//                current_value = *initial_value;
-//            }
-//        }
-//
-//        void Display(int index) override
-//        {
-//            bool value_changed = 0;
-//
-//            if (hint) // Note `tmp.size()+1` below. It's because `std::string` also includes space for a null-terminator.
-//                value_changed = ImGui::InputTextWithHint(Str(Data::EscapeStringForWidgetName(label), "###", index).c_str(), hint->c_str(), tmp.data(), tmp.size()+1);
-//            else
-//                value_changed = ImGui::InputText(Str(Data::EscapeStringForWidgetName(label), "###", index).c_str(), tmp.data(), tmp.size()+1);
-//
-//            if (value_changed)
-//                current_value = tmp.c_str(); // Note the `.c_str()`. It's needed to cut unnecessary bytes at the end of fixed-width `tmp` string.
-//        }
-//    };
+    struct TextInput : Data::WidgetBase<TextInput>
+    {
+        inline static constexpr const char *internal_name = "text_input";
+
+        Reflect(TextInput)
+        (
+            (std::string)(label),
+            (int)(max_bytes)(=2),
+            (std::string)(value),
+            (std::optional<std::string>)(hint),
+            (std::optional<bool>)(inline_label),
+        )
+
+        // This is null-terminated. We use a vector because ImGui wants a fixed-size buffer.
+        // It's probably possible to somehow directly plug `std::string` in there, but I don't want to bother.
+        std::vector<char> value_vec;
+
+        void Init() override
+        {
+            if (max_bytes < 2)
+                Program::Error("Max amount of bytes for a text input box has to be at least 2.");
+
+            if (int(value.size()) > max_bytes)
+                Program::Error("Initial value for a text input box has more symbols than the selected max amount.");
+
+            value_vec.resize(max_bytes);
+            std::copy(value.begin(), value.end(), value_vec.begin());
+        }
+
+        void Display(int index) override
+        {
+            bool value_changed = 0;
+            bool use_inline_label = inline_label ? *inline_label : 1;
+
+            if (!use_inline_label)
+                ImGui::TextUnformatted(label.c_str());
+
+            std::string inline_label = Str(use_inline_label ? Data::EscapeStringForWidgetName(label) : "", "###", index);
+
+            if (hint) // Note `tmp.size()+1` below. It's because `std::string` also includes space for a null-terminator.
+                value_changed = ImGui::InputTextWithHint(inline_label.c_str(), hint->c_str(), value_vec.data(), value_vec.size());
+            else
+                value_changed = ImGui::InputText(inline_label.c_str(), value_vec.data(), value_vec.size());
+
+            if (value_changed)
+                value = value_vec.data();
+        }
+    };
 }
 
 struct State

@@ -40,6 +40,23 @@
                     },
                 },
                 {
+                    "type" : "text_input",
+                    "data" : {
+                        "label" : "Текстовое поле",
+                        "max_bytes" : 500,
+                        "value" : "раз",
+                    },
+                },
+                {
+                    "type" : "text_input",
+                    "data" : {
+                        "label" : "Текстовое поле с очень длинным названием",
+                        "max_bytes" : 500,
+                        "value" : "два",
+                        "inline_label" : false,
+                    },
+                },
+                {
                     "type" : "spacing",
                 },
                 {
