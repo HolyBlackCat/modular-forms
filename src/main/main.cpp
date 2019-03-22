@@ -26,9 +26,11 @@ namespace VisualOptions
 {
     constexpr float
         outer_margin = 6,
-        step_list_width_relative = 0.2,
         step_list_min_width_pixels = 64,
-        step_list_max_width_relative = 0.5;
+        step_list_max_width_relative = 0.4;
+
+    constexpr int
+        modal_window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
 
     void GuiStyle(ImGuiStyle &style)
     {
@@ -231,11 +233,13 @@ namespace Data
 
     ReflectStruct(ProcedureStep,(
         (std::string)(name),
+        (std::optional<bool>)(confirm),
         (std::vector<Widget>)(widgets),
     ))
 
     ReflectStruct(Procedure,(
         (std::string)(name),
+        (std::optional<bool>)(confirm_exit),
         (std::vector<ProcedureStep>)(steps),
     ))
 }
@@ -295,7 +299,7 @@ namespace Widgets
             (std::optional<bool>)(packed),
         )
 
-        int size_x = 0; // If `packed == 0`, this is equal to 0 and is unused.
+        int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the button width on the first `Display()` call. Otherwise it stays at 0.
 
         void Init() override
         {
@@ -313,18 +317,34 @@ namespace Widgets
             {
                 for (const std::string &str : labels)
                     clamp_var_min(size_x, ImGui::CalcTextSize(str.c_str()).x);
-                size_x += ImGui::GetStyle().FramePadding.x * 2;
+                size_x += ImGui::GetStyle().FramePadding.x*2;
             }
 
-            for (std::size_t i = 0; i < labels.size(); i++)
+            int size_with_padding = size_x + ImGui::GetStyle().ItemSpacing.x;
+
+            int columns = size_x ? clamp_min(int(ImGui::GetWindowContentRegionWidth()) / size_with_padding, 1) : 1;
+            int elems_per_column = columns != 1 ? (labels.size() + columns - 1) / columns : labels.size();
+            columns = (labels.size() + elems_per_column - 1) / elems_per_column;
+
+            ImGui::Columns(columns, 0, 0);
+
+            int cur_y = ImGui::GetCursorPosY();
+
+            int elem_index = 0;
+            for (int i = 0; i < columns; i++)
             {
-                if (size_x > 0 && i != 0)
+                for (int j = 0; j < elems_per_column; j++)
                 {
-                    ImGui::SameLine();
-                    if (ImGui::GetContentRegionAvailWidth() < size_x + ImGui::GetStyle().ItemSpacing.x)
-                        ImGui::NewLine();
+                    if (elem_index >= int(labels.size()))
+                        break; // I don't think we want to terminate the outer loop early. We want to use all columns no matter what.
+
+                    ImGui::Button(Str(Data::EscapeStringForWidgetName(labels[elem_index]), "###", index, ":", elem_index).c_str(), fvec2(size_x,0));
+                    elem_index++;
                 }
-                ImGui::Button(Str(Data::EscapeStringForWidgetName(labels[i]), "###", index, ":", i).c_str(), fvec2(size_x,0));
+
+                ImGui::NextColumn();
+                if (i != columns-1)
+                    ImGui::SetCursorPosY(cur_y);
             }
         }
     };
@@ -346,7 +366,7 @@ namespace Widgets
         };
 
         std::vector<State> current_state; // Can't use a vector of `bool` directly, as `ImGui::Checkbox` expects actual `bool`s, ugh!
-        int size_x = 0;
+        int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the column width on the first `Display()` call. Otherwise it stays at 0.
 
         void Init() override
         {
@@ -377,24 +397,32 @@ namespace Widgets
                 for (const std::string &str : labels)
                     clamp_var_min(size_x, ImGui::CalcTextSize(str.c_str()).x);
 
-                size_x += ImGui::GetStyle().ItemSpacing.x * 3 + ImGui::GetStyle().ItemInnerSpacing.x;
+                size_x += ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.x + ImGui::GetStyle().ItemInnerSpacing.x;
             }
 
-            int cursor_x = 0;
+            int columns = size_x ? clamp_min(int(ImGui::GetWindowContentRegionWidth()) / size_x, 1) : 1;
+            int elems_per_column = columns != 1 ? (labels.size() + columns - 1) / columns : labels.size();
+            columns = (labels.size() + elems_per_column - 1) / elems_per_column;
 
-            for (std::size_t i = 0; i < labels.size(); i++)
+            ImGui::Columns(columns, 0, 0);
+
+            int cur_y = ImGui::GetCursorPosY();
+
+            int elem_index = 0;
+            for (int i = 0; i < columns; i++)
             {
-                if (size_x != 0 && i != 0)
+                for (int j = 0; j < elems_per_column; j++)
                 {
-                    cursor_x += size_x;
-                    ImGui::SameLine(cursor_x);
-                    if (ImGui::GetContentRegionAvailWidth() < size_x)
-                    {
-                        cursor_x = 0;
-                        ImGui::NewLine();
-                    }
+                    if (elem_index >= int(labels.size()))
+                        break; // I don't think we want to terminate the outer loop early. We want to use all columns no matter what.
+
+                    ImGui::Checkbox(Str(Data::EscapeStringForWidgetName(labels[elem_index]), "###", index, ":", elem_index).c_str(), &current_state[elem_index].state);
+                    elem_index++;
                 }
-                ImGui::Checkbox(Str(Data::EscapeStringForWidgetName(labels[i]), "###", index, ":", i).c_str(), &current_state[i].state);
+
+                ImGui::NextColumn();
+                if (i != columns-1)
+                    ImGui::SetCursorPosY(cur_y);
             }
         }
     };
@@ -410,8 +438,8 @@ namespace Widgets
             (std::optional<bool>)(packed),
         )
 
-        int current_selection = -1;
-        int size_x = 0;
+        int current_selection = 0;
+        int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the column width on the first `Display()` call. Otherwise it stays at 0.
 
         void Init() override
         {
@@ -437,24 +465,32 @@ namespace Widgets
                 for (const std::string &str : labels)
                     clamp_var_min(size_x, ImGui::CalcTextSize(str.c_str()).x);
 
-                size_x += ImGui::GetStyle().ItemSpacing.x * 3 + ImGui::GetStyle().ItemInnerSpacing.x;
+                size_x += ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.x + ImGui::GetStyle().ItemInnerSpacing.x;
             }
 
-            int cursor_x = 0;
+            int columns = size_x ? clamp_min(int(ImGui::GetWindowContentRegionWidth()) / size_x, 1) : 1;
+            int elems_per_column = columns != 1 ? (labels.size() + columns - 1) / columns : labels.size();
+            columns = (labels.size() + elems_per_column - 1) / elems_per_column;
 
-            for (size_t i = 0; i < labels.size(); i++)
+            ImGui::Columns(columns, 0, 0);
+
+            int cur_y = ImGui::GetCursorPosY();
+
+            int elem_index = 0;
+            for (int i = 0; i < columns; i++)
             {
-                if (size_x != 0 && i != 0)
+                for (int j = 0; j < elems_per_column; j++)
                 {
-                    cursor_x += size_x;
-                    ImGui::SameLine(cursor_x);
-                    if (ImGui::GetContentRegionAvailWidth() < size_x)
-                    {
-                        cursor_x = 0;
-                        ImGui::NewLine();
-                    }
+                    if (elem_index >= int(labels.size()))
+                        break; // I don't think we want to terminate the outer loop early. We want to use all columns no matter what.
+
+                    ImGui::RadioButton(Str(Data::EscapeStringForWidgetName(labels[elem_index]), "###", index, ":", elem_index).c_str(), &current_selection, elem_index+1);
+                    elem_index++;
                 }
-                ImGui::RadioButton(Str(Data::EscapeStringForWidgetName(labels[i]), "###", index, ":", i).c_str(), &current_selection, i+1);
+
+                ImGui::NextColumn();
+                if (i != columns-1)
+                    ImGui::SetCursorPosY(cur_y);
             }
         }
     };
@@ -462,6 +498,8 @@ namespace Widgets
 
 struct State
 {
+    bool exit_requested = 0;
+
     virtual void Tick() = 0;
     virtual ~State() = default;
 };
@@ -471,6 +509,7 @@ struct StateMain : State
     bool first_tick = 1;
     Data::Procedure proc;
     std::size_t current_step_index = 0;
+    bool first_tick_at_this_step = 1;
 
     StateMain()
     {
@@ -485,8 +524,16 @@ struct StateMain : State
         {
             proc = Data::ReflectedObjectFromJson<Data::Procedure>(json);
 
+            if (proc.name.find_first_of("\n") != std::string::npos)
+                Program::Error("Line feeds are not allowed in procedure names.");
             if (proc.steps.size() < 1)
                 Program::Error("The procedure must have at least one step.");
+
+            for (const Data::ProcedureStep &step : proc.steps)
+            {
+                if (step.name.find_first_of("\n") != std::string::npos)
+                    Program::Error("Line feeds are not allowed in procedure names.");
+            }
         }
         catch (std::exception &e)
         {
@@ -511,12 +558,21 @@ struct StateMain : State
         bool keep_running = 1;
         ImGui::Begin((Data::EscapeStringForWidgetName(proc.name) + "###procedure").c_str(), &keep_running, window_flags);
         if (!keep_running)
-            Program::Exit();
+            exit_requested = 1;
 
         ImGui::Columns(2, "main_columns", 1);
 
         if (first_tick)
-            ImGui::SetColumnWidth(-1, iround(window.Size().x * VisualOptions::step_list_width_relative));
+        {
+            int list_column_width = 0;
+
+            for (const Data::ProcedureStep &step : proc.steps)
+                clamp_var_min(list_column_width, ImGui::CalcTextSize(step.name.c_str()).x);
+
+            list_column_width += ImGui::GetStyle().ScrollbarSize + ImGui::GetStyle().ItemSpacing.x * 2;
+
+            ImGui::SetColumnWidth(-1, list_column_width);
+        }
 
         int list_column_width = ImGui::GetColumnWidth(-1);
         if (list_column_width < VisualOptions::step_list_min_width_pixels)
@@ -524,11 +580,20 @@ struct StateMain : State
         else if (int max_list_column_width = iround(VisualOptions::step_list_max_width_relative * ImGui::GetWindowContentRegionWidth()); list_column_width > max_list_column_width)
             ImGui::SetColumnWidth(-1, max_list_column_width);
 
-        ImGui::BeginChild(Str("step_list_", current_step_index).c_str());
+        { // Step list
+            ImGui::BeginChild("step_list");
 
-        for (std::size_t i = 0; i < proc.steps.size(); i++)
-            ImGui::Selectable(Data::EscapeStringForWidgetName(proc.steps[i].name).c_str(), i == current_step_index, i > current_step_index ? ImGuiSelectableFlags_Disabled : 0);
-        ImGui::EndChild();
+            std::size_t cur_step = current_step_index - (current_step_index > 0 ? first_tick_at_this_step : 0); // We use this rather than `current_step_index` to prevent jitter of the list when changing steps.
+
+            for (std::size_t i = 0; i < proc.steps.size(); i++)
+            {
+                ImGui::Selectable(Data::EscapeStringForWidgetName(proc.steps[i].name).c_str(), i == cur_step, i > cur_step ? ImGuiSelectableFlags_Disabled : 0);
+                if (first_tick_at_this_step && i == cur_step)
+                    ImGui::SetScrollHereY(0.75);
+            }
+
+            ImGui::EndChild();
+        }
 
         ImGui::NextColumn();
 
@@ -547,13 +612,76 @@ struct StateMain : State
 
         ImGui::EndChild();
 
-        ImGui::Button("Продолжить");
+        bool finishing_step_at_this_tick = 0;
+
+        { // Ending step
+            auto EndStep = [&]
+            {
+                current_step_index++;
+                finishing_step_at_this_tick = 1;
+
+                if (current_step_index >= proc.steps.size())
+                    Program::Exit();
+            };
+
+            if (ImGui::Button("Завершить шаг"))
+            {
+                if (current_step.confirm && *current_step.confirm)
+                    ImGui::OpenPopup("end_step_modal");
+                else
+                    EndStep();
+            }
+
+            if (ImGui::BeginPopupModal("end_step_modal", 0, VisualOptions::modal_window_flags))
+            {
+                ImGui::TextUnformatted("Действительно завершить шаг?");
+                if (ImGui::Button("Завершить"))
+                {
+                    EndStep();
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Отмена"))
+                {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
+        }
+
+        { // Exit modal
+            if (exit_requested)
+            {
+                exit_requested = 0;
+
+                if (proc.confirm_exit && *proc.confirm_exit)
+                    ImGui::OpenPopup("confirm_exit_modal");
+                else
+                    Program::Exit();
+            }
+
+            if (ImGui::BeginPopupModal("confirm_exit_modal", 0, VisualOptions::modal_window_flags))
+            {
+                ImGui::TextUnformatted("Прервать действие и выйти?");
+                if (ImGui::Button("Выйти"))
+                {
+                    Program::Exit();
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Отмена"))
+                {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
+        }
 
         ImGui::End();
 
-        //ImGui::ShowDemoWindow();
-
         first_tick = 0;
+        first_tick_at_this_step = finishing_step_at_this_tick;
+        finishing_step_at_this_tick = 0;
     }
 };
 
@@ -564,7 +692,7 @@ int main()
             ivec2 window_size(800, 600);
 
             Interface::WindowSettings window_settings;
-            window_settings.min_size = window_size / 2;
+            window_settings.min_size = window_size;
             window_settings.gl_major = 2;
             window_settings.gl_minor = 1;
             window_settings.gl_profile = Interface::Profile::any;
@@ -619,7 +747,7 @@ int main()
             if (window.Resized())
                 Graphics::Viewport(window.Size());
             if (window.ExitRequested())
-                Program::Exit();
+                state->exit_requested = 1;
 
             if (imgui_frame_started)
                 ImGui::EndFrame();
@@ -630,7 +758,6 @@ int main()
             imgui_frame_started = 1;
 
             state->Tick();
-
         }
 
         if (imgui_frame_started)
