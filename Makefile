@@ -162,19 +162,21 @@ clean:
 	$(call rmdir,$(OBJECT_DIR))
 	$(call rmfile,$(OUTPUT_FILE_EXT))
 
--include $(DEP_FILES)
+# Helpers for generating compile_commands.json
+override file_command = && $(call echo,{"directory": "."$(comma) "file": "$(cur_dir)/$2"$(comma) "command": "$1 $2"}$(comma)) >>compile_commands.json
+override all_source_commands = $(foreach file,$(SOURCES_C),$(call file_command,$(CC) $(CFLAGS),$(file))) $(foreach file,$(SOURCES_CPP),$(call file_command,$(CXX) $(CXXFLAGS),$(file)))
+override all_header_commands = $(foreach file,$(call rwildcard,./,*.h) $(call rwildcard,./,*.hpp),$(call file_command,,$(file)))
 
 # Target: generate compile_commands.json
-override file_command= && $(call echo,{"directory": "."$(comma) "file": "$(cur_dir)/$2"$(comma) "command": "$1 $2"}$(comma)) >>compile_commands.json
-
 .PHONY: commands
 commands:
 	@$(call echo,[Generating] compile_commands.json)
-	@$(call echo,[) >compile_commands.json $(foreach file,$(SOURCES_C),$(call file_command,$(CC) $(CFLAGS),$(file))) $(foreach file,$(SOURCES_CPP),$(call file_command,$(CXX) $(CXXFLAGS),$(file))) && $(call echo,]) >>compile_commands.json
+	@$(call echo,[) >compile_commands.json $(all_source_commands) && $(call echo,]) >>compile_commands.json
 	@$(call echo,[Done])
-	
+
 # Target: clean compile_commands.json
 .PHONY: clean_commands
 clean_commands:
 	$(call rmfile,compile_commands.json)
-	
+
+-include $(DEP_FILES)
