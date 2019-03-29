@@ -16,6 +16,16 @@
                     "type" : "line",
                 },
                 {
+                    "type" : "image",
+                    "data" : {
+                        "file_name" : "test_pic.jpg",
+                        "width_rel" : 0.5,
+                    },
+                },
+                {
+                    "type" : "line",
+                },
+                {
                     "type" : "button_list",
                     "data" : {
                         "labels" : [

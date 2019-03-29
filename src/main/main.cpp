@@ -2,6 +2,7 @@
 
 #include <iomanip>
 #include <map>
+#include <memory>
 #include <optional>
 #include <typeinfo>
 #include <typeindex>
@@ -726,6 +727,57 @@ namespace Widgets
 
             if (value_changed)
                 value = value_vec.data();
+        }
+    };
+
+    struct Image : Data::WidgetBase<Image>
+    {
+        inline static constexpr const char *internal_name = "image";
+
+        Reflect(Image)
+        (
+            (std::string)(file_name),
+            (std::optional<float>)(width_abs), // Exactly one of those two options has to be specified.
+            (std::optional<float>)(width_rel), //
+        )
+
+        ivec2 pixel_size = ivec2(0);
+        float width = 1;
+        bool use_relative_width = 0;
+        std::shared_ptr<Graphics::TexObject> texture;
+
+        void Init() override
+        {
+            if (bool(width_abs) == bool(width_rel))
+                Program::Error("Exactly one of the two options has to be specified: `width_abs` or `width_rel.");
+
+            use_relative_width = bool(width_rel);
+            width = (use_relative_width ? *width_rel : *width_abs);
+
+            MemoryFile file(file_name);
+            try
+            {
+                Graphics::Image image(file);
+                pixel_size = image.Size();
+                texture = std::make_shared<Graphics::TexObject>();
+                auto &tex_obj = *texture;
+                Graphics::TexUnit(tex_obj).Interpolation(Graphics::linear).Wrap(Graphics::clamp).SetData(image);
+            }
+            catch (std::exception &e)
+            {
+                Program::Error("While loading image `", file_name, "`: ", e.what());
+            }
+        }
+
+        void Display(int index) override
+        {
+            (void)index;
+            if (!texture)
+                Program::Error("Internal error: Image handle is null.");
+            fvec2 size = pixel_size / pixel_size.x * width;
+            if (use_relative_width)
+                size *= ImGui::GetWindowContentRegionWidth();
+            ImGui::Image((void *)(uintptr_t)texture->Handle(), round(size), fvec2(0), fvec2(1), fvec4(1), ImGui::GetStyleColorVec4(ImGuiCol_Border));
         }
     };
 }
