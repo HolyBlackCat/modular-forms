@@ -51,11 +51,12 @@
         {
             "label": "Update project",
             "type": "shell",
-            "command": "mingw32-make commands",
+            "command": "mingw32-make commands_fixed",
             "options": {
                 "env": {
                     "CXX": "clang++",
                     "CXXFLAGS_EXTRA": "-target x86_64-w64-windows-gnu",
+                    "EXCLUDE_DIRS": "lib/include",
                 },
             },
             "presentation": {

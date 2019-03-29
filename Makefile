@@ -43,9 +43,8 @@ override dollar := $
 # Source: https://stackoverflow.com/a/18258352/2752075
 # Recursively searches a directory for all files matching a pattern.
 # The first parameter is a directory, the second is a pattern.
-# THE PARAMETER MUST END WITH /
-# Example usage: SOURCES = $(call rwildcard, src/, *.cpp)
-override rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2)$(filter $(subst *,%,$2),$d))
+# Example usage: SOURCES = $(call rwildcard, src, *.c *.cpp)
+override rwildcard=$(foreach d,$(wildcard $1/*),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 
 
 # --- DETECT ENVIRONMENT ---
@@ -112,8 +111,8 @@ include build_options.mk
 # --- LOCATE FILES ---
 
 # Source files.
-override SOURCES_C = $(foreach dir,$(SOURCE_DIRS),$(call rwildcard, $(dir)/, *.c))
-override SOURCES_CPP = $(foreach dir,$(SOURCE_DIRS),$(call rwildcard, $(dir)/, *.cpp))
+override SOURCES_C = $(foreach dir,$(SOURCE_DIRS),$(call rwildcard, $(dir), *.c))
+override SOURCES_CPP = $(foreach dir,$(SOURCE_DIRS),$(call rwildcard, $(dir), *.cpp))
 override SOURCES = $(SOURCES_C) $(SOURCES_CPP)
 
 # Object files.
@@ -164,14 +163,22 @@ clean:
 
 # Helpers for generating compile_commands.json
 override file_command = && $(call echo,{"directory": "."$(comma) "file": "$(cur_dir)/$2"$(comma) "command": "$1 $2"}$(comma)) >>compile_commands.json
-override all_source_commands = $(foreach file,$(SOURCES_C),$(call file_command,$(CC) $(CFLAGS),$(file))) $(foreach file,$(SOURCES_CPP),$(call file_command,$(CXX) $(CXXFLAGS),$(file)))
-override all_header_commands = $(foreach file,$(call rwildcard,./,*.h) $(call rwildcard,./,*.hpp),$(call file_command,,$(file)))
+override all_commands = $(foreach file,$(SOURCES_C),$(call file_command,$(CC) $(CFLAGS),$(file))) $(foreach file,$(SOURCES_CPP),$(call file_command,$(CXX) $(CXXFLAGS),$(file)))
+override all_stub_commands = $(foreach file,$(filter-out $(SOURCES),$(foreach dir,$(EXCLUDE_DIRS), \
+							 $(call rwildcard,$(dir),*.c) $(call rwildcard,$(dir),*.cpp) $(call rwildcard,$(dir),*.h) $(call rwildcard,$(dir),*.hpp))),$(call file_command,,$(file)))
 
 # Target: generate compile_commands.json
 .PHONY: commands
 commands:
 	@$(call echo,[Generating] compile_commands.json)
-	@$(call echo,[) >compile_commands.json $(all_source_commands) && $(call echo,]) >>compile_commands.json
+	@$(call echo,[) >compile_commands.json $(all_commands) $(all_header_commands) && $(call echo,]) >>compile_commands.json
+	@$(call echo,[Done])
+
+# Target: generate compile_commands.json with invalid commands for files in EXCLUDE_DIRS not added to the project
+.PHONY: commands_fixed
+commands_fixed:
+	@$(call echo,[Generating] compile_commands.json (fixed))
+	@$(call echo,[) >compile_commands.json $(all_commands) $(all_stub_commands) && $(call echo,]) >>compile_commands.json
 	@$(call echo,[Done])
 
 # Target: clean compile_commands.json
