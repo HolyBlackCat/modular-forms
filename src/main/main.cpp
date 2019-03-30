@@ -8,6 +8,7 @@
 #include <typeindex>
 #include <vector>
 
+#include "input/complete.h"
 #include "interface/window.h"
 #include "graphics/complete.h"
 #include "program/exit.h"
@@ -32,7 +33,8 @@ namespace VisualOptions
     constexpr float
         outer_margin = 6,
         step_list_min_width_pixels = 64,
-        step_list_max_width_relative = 0.4;
+        step_list_max_width_relative = 0.4,
+        image_preview_outer_margin = outer_margin + outer_margin/2;
 
     constexpr int
         modal_window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
@@ -903,7 +905,7 @@ struct StateMain : State
 
         bool finishing_step_at_this_tick = 0;
 
-        { // Ending step
+        { // Ending step button and modal
             auto EndStep = [&]
             {
                 current_step_index++;
@@ -931,6 +933,23 @@ struct StateMain : State
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Отмена"))
+                {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
+        }
+
+        { // Image preview modal
+            if (ImGui::IsPopupOpen("image_view_modal"))
+            {
+                ImGui::SetNextWindowPos(ivec2(VisualOptions::image_preview_outer_margin));
+                ImGui::SetNextWindowSize(ivec2(window.Size() - 2 * VisualOptions::image_preview_outer_margin));
+            }
+
+            if (ImGui::BeginPopupModal("image_view_modal", 0, VisualOptions::modal_window_flags))
+            {
+                if (ImGui::Button("Закрыть") || Input::Button(Input::escape).pressed())
                 {
                     ImGui::CloseCurrentPopup();
                 }

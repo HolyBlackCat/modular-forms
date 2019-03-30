@@ -158,8 +158,10 @@ $(OBJECT_DIR)/%.cpp.o: %.cpp
 # Target: clean the build
 .PHONY: clean
 clean:
+	@$(call echo,[Cleaning])
 	$(call rmdir,$(OBJECT_DIR))
 	$(call rmfile,$(OUTPUT_FILE_EXT))
+	@$(call echo,[Done])
 
 # Helpers for generating compile_commands.json
 override file_command = && $(call echo,{"directory": "."$(comma) "file": "$(cur_dir)/$2"$(comma) "command": "$1 $2"}$(comma)) >>compile_commands.json
@@ -186,4 +188,43 @@ commands_fixed:
 clean_commands:
 	$(call rmfile,compile_commands.json)
 
+# Import saved target
+override SAVED_TARGET =
+-include .config.mk
+
+# Target: set target for `make current`
+.PHONY: set_current
+.PHONY: set_current_clean
+ifeq ($(TARGET),)
+set_current_clean:
+set_current:
+	@$(call echo,Set TARGET variable to a desired target name.)
+	@exit 1
+else
+ifeq ($(TARGET),$(strip $(SAVED_TARGET)))
+set_current_clean:
+set_current:
+else
+set_current_clean: set_current clean
+set_current:
+	@$(call echo,override SAVED_TARGET := $(TARGET)) >.config.mk
+	@$(call echo,[Info] New target is: $(TARGET))
+endif
+endif
+
+# Target: build current target
+.PHONY: current
+ifeq ($(SAVED_TARGET),)
+print_current:
+current:
+	@$(call echo,No target selected.)
+	@exit 1
+else
+print_current:
+	@$(call echo,[Target] $(SAVED_TARGET))
+current: print_current $(SAVED_TARGET)
+endif
+
+
+# --- INCLUDE DEPENDENCIES ---
 -include $(DEP_FILES)
