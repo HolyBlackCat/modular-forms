@@ -31,13 +31,14 @@ Interface::Window window;
 namespace VisualOptions
 {
     constexpr float
-        outer_margin = 6,
-        step_list_min_width_pixels = 64,
-        step_list_max_width_relative = 0.4,
-        image_preview_outer_margin = outer_margin + outer_margin/2;
+        step_list_max_width_relative = 0.4;
 
     constexpr int
-        modal_window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
+        modal_window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings,
+        outer_margin = 6,
+        step_list_min_width_pixels = 64,
+        image_preview_outer_margin = outer_margin + outer_margin/2,
+        tooltip_padding = 2;
 
     void GuiStyle(ImGuiStyle &style)
     {
@@ -346,8 +347,28 @@ namespace Data
 
             if constexpr (refl_t::is_structure)
             {
-                output += "{\n";
+                bool multiline = 0;
+                refl.for_each_field([&](auto index)
+                {
+                    constexpr int i = index.value;
+                    using field_type = typename refl_t::template field_type<i>;
+                    if constexpr (!is_std_optional<field_type>::value)
+                    {
+                        if (!Refl::Interface<field_type>::is_primitive)
+                            multiline = 1;
+                    }
+                    else
+                    {
+                        if (!Refl::Interface<typename field_type::value_type>::is_primitive)
+                            multiline = 1;
+                    }
+                });
 
+                output += '{';
+                if (multiline)
+                    output += '\n';
+
+                bool first = 1;
                 refl.for_each_field([&](auto index)
                 {
                     constexpr int i = index.value;
@@ -355,27 +376,48 @@ namespace Data
                     const std::string &field_name = refl.field_name(i);
                     auto &field_ref = refl.template field_value<i>();
 
-                    if constexpr (!is_std_optional<field_type>::value)
+                    if constexpr (is_std_optional<field_type>::value)
+                        if (!field_ref)
+                            return;
+
+                    if (first)
                     {
-                        output += cur_indent_str + indent_step_str + R"(")" + field_name + R"(" : )";
-                        ReflectedObjectToJsonLow(field_ref, indent_steps+1, indent_step_w, output);
-                        output += ",\n";
+                        first = 0;
                     }
                     else
                     {
-                        if (field_ref)
-                        {
-                            output += cur_indent_str + indent_step_str + R"(")" + field_name + R"(" : )";
-                            ReflectedObjectToJsonLow(*field_ref, indent_steps+1, indent_step_w, output);
-                            output += ",\n";
-                        }
+                        output += ',';
+                        if (multiline)
+                            output += '\n';
+                        else
+                            output += ' ';
                     }
+
+                    if (multiline)
+                        output += cur_indent_str + indent_step_str;
+                    output += R"(")" + field_name + R"(" : )";
+
+                    if constexpr (!is_std_optional<field_type>::value)
+                        ReflectedObjectToJsonLow(field_ref, indent_steps+1, indent_step_w, output);
+                    else
+                        ReflectedObjectToJsonLow(*field_ref, indent_steps+1, indent_step_w, output);
                 });
 
-                output += cur_indent_str + "}";
+                if (multiline)
+                {
+                    output += ",\n";
+                    output += cur_indent_str;
+                }
+                output += '}';
             }
             else if constexpr (refl_t::is_container)
             {
+                if (refl.empty())
+                {
+                    output += "[]";
+                    return;
+                }
+
                 output += "[\n";
 
                 refl.for_each_element([&](auto it)
@@ -495,9 +537,14 @@ namespace Widgets
     {
         inline static constexpr const char *internal_name = "button_list";
 
+        ReflectStruct(Button, (
+            (std::string)(label),
+            (std::optional<std::string>)(tooltip),
+        ))
+
         Reflect(ButtonList)
         (
-            (std::vector<std::string>)(labels),
+            (std::vector<Button>)(buttons),
             (std::optional<bool>)(packed),
         )
 
@@ -505,7 +552,7 @@ namespace Widgets
 
         void Init() override
         {
-            if (labels.size() == 0)
+            if (buttons.size() == 0)
                 Program::Error("A button list must contain at least one button.");
 
             // We can't calculate proper width here, as fonts don't seem to be loaded this early.
@@ -517,16 +564,16 @@ namespace Widgets
         {
             if (size_x == -1)
             {
-                for (const std::string &str : labels)
-                    clamp_var_min(size_x, ImGui::CalcTextSize(str.c_str()).x);
+                for (const auto &button : buttons)
+                    clamp_var_min(size_x, ImGui::CalcTextSize(button.label.c_str()).x);
                 size_x += ImGui::GetStyle().FramePadding.x*2;
             }
 
             int size_with_padding = size_x + ImGui::GetStyle().ItemSpacing.x;
 
             int columns = size_x ? clamp_min(int(ImGui::GetWindowContentRegionWidth()) / size_with_padding, 1) : 1;
-            int elems_per_column = columns != 1 ? (labels.size() + columns - 1) / columns : labels.size();
-            columns = (labels.size() + elems_per_column - 1) / elems_per_column;
+            int elems_per_column = columns != 1 ? (buttons.size() + columns - 1) / columns : buttons.size();
+            columns = (buttons.size() + elems_per_column - 1) / elems_per_column;
 
             ImGui::Columns(columns, 0, 0);
 
@@ -537,10 +584,22 @@ namespace Widgets
             {
                 for (int j = 0; j < elems_per_column; j++)
                 {
-                    if (elem_index >= int(labels.size()))
+                    if (elem_index >= int(buttons.size()))
                         break; // I don't think we want to terminate the outer loop early. We want to use all columns no matter what.
 
-                    ImGui::Button(Str(Data::EscapeStringForWidgetName(labels[elem_index]), "###", index, ":", elem_index).c_str(), fvec2(size_x,0));
+                    const auto &button = buttons[elem_index];
+
+                    ImGui::Button(Str(Data::EscapeStringForWidgetName(button.label), "###", index, ":", elem_index).c_str(), fvec2(size_x,0));
+
+                    if (button.tooltip && ImGui::IsItemHovered())
+                    {
+                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(VisualOptions::tooltip_padding));
+                        ImGui::BeginTooltip();
+                        ImGui::TextUnformatted(button.tooltip->c_str());
+                        ImGui::EndTooltip();
+                        ImGui::PopStyleVar();
+                    }
+
                     elem_index++;
                 }
 
@@ -558,11 +617,12 @@ namespace Widgets
         ReflectStruct(CheckBox,(
             (std::string)(label),
             (bool)(state)(=0),
+            (std::optional<std::string>)(tooltip),
         ))
 
         Reflect(CheckBoxList)
         (
-            (std::vector<CheckBox>)(list),
+            (std::vector<CheckBox>)(checkboxes),
             (std::optional<bool>)(packed),
         )
 
@@ -575,7 +635,7 @@ namespace Widgets
 
         void Init() override
         {
-            if (list.size() == 0)
+            if (checkboxes.size() == 0)
                 Program::Error("A checkbox list must contain at least one checkbox.");
 
             // We can't calculate proper width here, as fonts don't seem to be loaded this early.
@@ -587,15 +647,15 @@ namespace Widgets
         {
             if (size_x == -1)
             {
-                for (const CheckBox &elem : list)
+                for (const CheckBox &elem : checkboxes)
                     clamp_var_min(size_x, ImGui::CalcTextSize(elem.label.c_str()).x);
 
                 size_x += ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.x + ImGui::GetStyle().ItemInnerSpacing.x;
             }
 
             int columns = size_x ? clamp_min(int(ImGui::GetWindowContentRegionWidth()) / size_x, 1) : 1;
-            int elems_per_column = columns != 1 ? (list.size() + columns - 1) / columns : list.size();
-            columns = (list.size() + elems_per_column - 1) / elems_per_column;
+            int elems_per_column = columns != 1 ? (checkboxes.size() + columns - 1) / columns : checkboxes.size();
+            columns = (checkboxes.size() + elems_per_column - 1) / elems_per_column;
 
             ImGui::Columns(columns, 0, 0);
 
@@ -606,10 +666,22 @@ namespace Widgets
             {
                 for (int j = 0; j < elems_per_column; j++)
                 {
-                    if (elem_index >= int(list.size()))
+                    if (elem_index >= int(checkboxes.size()))
                         break; // I don't think we want to terminate the outer loop early. We want to use all columns no matter what.
 
-                    ImGui::Checkbox(Str(Data::EscapeStringForWidgetName(list[elem_index].label), "###", index, ":", elem_index).c_str(), &list[elem_index].state);
+                    auto &checkbox = checkboxes[elem_index];
+
+                    ImGui::Checkbox(Str(Data::EscapeStringForWidgetName(checkbox.label), "###", index, ":", elem_index).c_str(), &checkbox.state);
+
+                    if (checkbox.tooltip && ImGui::IsItemHovered())
+                    {
+                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(VisualOptions::tooltip_padding));
+                        ImGui::BeginTooltip();
+                        ImGui::TextUnformatted(checkbox.tooltip->c_str());
+                        ImGui::EndTooltip();
+                        ImGui::PopStyleVar();
+                    }
+
                     elem_index++;
                 }
 
@@ -624,9 +696,14 @@ namespace Widgets
     {
         inline static constexpr const char *internal_name = "radiobutton_list";
 
+        ReflectStruct(RadioButton, (
+            (std::string)(label),
+            (std::optional<std::string>)(tooltip),
+        ))
+
         Reflect(RadioButtonList)
         (
-            (std::vector<std::string>)(labels),
+            (std::vector<RadioButton>)(radiobuttons),
             (int)(selected)(=0),
             (std::optional<bool>)(packed),
         )
@@ -635,10 +712,10 @@ namespace Widgets
 
         void Init() override
         {
-            if (labels.size() == 0)
+            if (radiobuttons.size() == 0)
                 Program::Error("A checkbox list must contain at least one checkbox.");
 
-            if (selected < 0 || selected > int(labels.size())) // Sic.
+            if (selected < 0 || selected > int(radiobuttons.size())) // Sic.
                 Program::Error("Index of a selected radio button is out of range.");
 
             // We can't calculate a proper button width here, as fonts don't seem to be loaded this early.
@@ -650,15 +727,15 @@ namespace Widgets
         {
             if (size_x == -1)
             {
-                for (const std::string &str : labels)
-                    clamp_var_min(size_x, ImGui::CalcTextSize(str.c_str()).x);
+                for (const auto &radiobutton : radiobuttons)
+                    clamp_var_min(size_x, ImGui::CalcTextSize(radiobutton.label.c_str()).x);
 
                 size_x += ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.x + ImGui::GetStyle().ItemInnerSpacing.x;
             }
 
             int columns = size_x ? clamp_min(int(ImGui::GetWindowContentRegionWidth()) / size_x, 1) : 1;
-            int elems_per_column = columns != 1 ? (labels.size() + columns - 1) / columns : labels.size();
-            columns = (labels.size() + elems_per_column - 1) / elems_per_column;
+            int elems_per_column = columns != 1 ? (radiobuttons.size() + columns - 1) / columns : radiobuttons.size();
+            columns = (radiobuttons.size() + elems_per_column - 1) / elems_per_column;
 
             ImGui::Columns(columns, 0, 0);
 
@@ -669,10 +746,22 @@ namespace Widgets
             {
                 for (int j = 0; j < elems_per_column; j++)
                 {
-                    if (elem_index >= int(labels.size()))
+                    if (elem_index >= int(radiobuttons.size()))
                         break; // I don't think we want to terminate the outer loop early. We want to use all columns no matter what.
 
-                    ImGui::RadioButton(Str(Data::EscapeStringForWidgetName(labels[elem_index]), "###", index, ":", elem_index).c_str(), &selected, elem_index+1);
+                    const auto &radiobutton = radiobuttons[elem_index];
+
+                    ImGui::RadioButton(Str(Data::EscapeStringForWidgetName(radiobutton.label), "###", index, ":", elem_index).c_str(), &selected, elem_index+1);
+
+                    if (radiobutton.tooltip && ImGui::IsItemHovered())
+                    {
+                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(VisualOptions::tooltip_padding));
+                        ImGui::BeginTooltip();
+                        ImGui::TextUnformatted(radiobutton.tooltip->c_str());
+                        ImGui::EndTooltip();
+                        ImGui::PopStyleVar();
+                    }
+
                     elem_index++;
                 }
 
@@ -781,7 +870,7 @@ namespace Widgets
 
         void Display(int index) override
         {
-            constexpr int padding = 2, tooltip_padding = 2;;
+            constexpr int padding = 2;
 
             int width = ImGui::GetWindowContentRegionWidth() / columns - ImGui::GetStyle().ItemSpacing.x - padding * 2;
             ivec2 max_size = ivec2(0);
@@ -819,7 +908,7 @@ namespace Widgets
                     ImGui::ImageButton((void *)(uintptr_t)image.texture->Handle(), max_size, coord_a, coord_b, padding);
                     if (image.tooltip && ImGui::IsItemHovered())
                     {
-                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(tooltip_padding));
+                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(VisualOptions::tooltip_padding));
                         ImGui::BeginTooltip();
                         ImGui::TextUnformatted(image.tooltip->c_str());
                         ImGui::EndTooltip();
@@ -861,10 +950,9 @@ struct StateMain : State
 
     void Load(std::string file_name)
     {
-        Json json(MemoryFile(file_name).string(), 64);
-
         try
         {
+            Json json(MemoryFile(file_name).string(), 64);
             proc = Data::ReflectedObjectFromJson<Data::Procedure>(json);
 
             if (proc.name.find_first_of("\n") != std::string::npos)

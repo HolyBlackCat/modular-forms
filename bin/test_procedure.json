@@ -8,9 +8,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Привет, мир!\nHello, world!\nПроверяем перенос строк. Проверяем перенос строк. Проверяем перенос строк. Проверяем перенос строк. Проверяем перенос строк. Проверяем перенос строк.",
-                    },
+                    "data" : {"text" : "Привет, мир!\nHello, world!\nПроверяем перенос строк. Проверяем перенос строк. Проверяем перенос строк. Проверяем перенос строк. Проверяем перенос строк. Проверяем перенос строк."},
                 },
                 {
                     "type" : "line",
@@ -19,14 +17,8 @@
                     "type" : "image_list",
                     "data" : {
                         "images" : [
-                            {
-                                "tooltip" : "Картинка 1",
-                                "file_name" : "test_pic.jpg",
-                            },
-                            {
-                                "tooltip" : "Картинка 2",
-                                "file_name" : "test_pic_2.png",
-                            },
+                            {"tooltip" : "Картинка 1", "file_name" : "test_pic.jpg"},
+                            {"tooltip" : "Картинка 2", "file_name" : "test_pic_2.png"},
                         ],
                         "columns" : 4,
                     },
@@ -37,43 +29,28 @@
                 {
                     "type" : "button_list",
                     "data" : {
-                        "labels" : [
-                            "Кнопка 1",
-                            "Кнопка 2",
+                        "buttons" : [
+                            {"label" : "Кнопка 1", "tooltip" : "Подсказка"},
+                            {"label" : "Кнопка 2"},
                         ],
                     },
                 },
                 {
                     "type" : "checkbox_list",
                     "data" : {
-                        "list" : [
-                            {
-                                "label" : "Галочка 1",
-                                "state" : false,
-                            },
-                            {
-                                "label" : "Галочка 2 (включена по умолчанию)",
-                                "state" : true,
-                            },
+                        "checkboxes" : [
+                            {"label" : "Галочка 1", "state" : false, "tooltip" : "Подсказка"},
+                            {"label" : "Галочка 2 (включена по умолчанию)", "state" : true},
                         ],
                     },
                 },
                 {
                     "type" : "text_input",
-                    "data" : {
-                        "label" : "Текстовое поле",
-                        "max_bytes" : 500,
-                        "value" : "раз",
-                    },
+                    "data" : {"label" : "Текстовое поле", "max_bytes" : 500, "value" : "раз"},
                 },
                 {
                     "type" : "text_input",
-                    "data" : {
-                        "label" : "Текстовое поле с очень длинным названием",
-                        "max_bytes" : 500,
-                        "value" : "два",
-                        "inline_label" : false,
-                    },
+                    "data" : {"label" : "Текстовое поле с очень длинным названием", "max_bytes" : 500, "value" : "два", "inline_label" : false},
                 },
                 {
                     "type" : "spacing",
@@ -81,9 +58,9 @@
                 {
                     "type" : "radiobutton_list",
                     "data" : {
-                        "labels" : [
-                            "Кружок 1",
-                            "Кружок 2",
+                        "radiobuttons" : [
+                            {"label" : "Кружок 1", "tooltip" : "Подсказка"},
+                            {"label" : "Кружок 2"},
                         ],
                         "selected" : 0,
                     },
@@ -94,9 +71,9 @@
                 {
                     "type" : "radiobutton_list",
                     "data" : {
-                        "labels" : [
-                            "Еще кружок 1 (выбран по умолчанию)",
-                            "Еще кружок 2",
+                        "radiobuttons" : [
+                            {"label" : "Еще кружок 1 (выбран по умолчанию)"},
+                            {"label" : "Еще кружок 2"},
                         ],
                         "selected" : 1,
                     },
@@ -107,18 +84,18 @@
                 {
                     "type" : "button_list",
                     "data" : {
-                        "labels" : [
-                            "Набор",
-                            "плотно",
-                            "упакованных",
-                            "кнопок",
-                            "кнопок",
-                            "кнопок",
-                            "кнопок",
-                            "кнопок",
-                            "кнопок",
-                            "кнопок",
-                            "кнопок",
+                        "buttons" : [
+                            {"label" : "Набор"},
+                            {"label" : "плотно"},
+                            {"label" : "упакованных"},
+                            {"label" : "кнопок"},
+                            {"label" : "кнопок"},
+                            {"label" : "кнопок"},
+                            {"label" : "кнопок"},
+                            {"label" : "кнопок"},
+                            {"label" : "кнопок"},
+                            {"label" : "кнопок"},
+                            {"label" : "кнопок"},
                         ],
                         "packed" : true,
                     },
@@ -129,51 +106,18 @@
                 {
                     "type" : "checkbox_list",
                     "data" : {
-                        "list" : [
-                            {
-                                "label" : "Набор",
-                                "state" : false,
-                            },
-                            {
-                                "label" : "плотно",
-                                "state" : false,
-                            },
-                            {
-                                "label" : "упакованных",
-                                "state" : false,
-                            },
-                            {
-                                "label" : "галочек",
-                                "state" : false,
-                            },
-                            {
-                                "label" : "галочек",
-                                "state" : false,
-                            },
-                            {
-                                "label" : "галочек",
-                                "state" : false,
-                            },
-                            {
-                                "label" : "галочек",
-                                "state" : false,
-                            },
-                            {
-                                "label" : "галочек",
-                                "state" : false,
-                            },
-                            {
-                                "label" : "галочек",
-                                "state" : false,
-                            },
-                            {
-                                "label" : "галочек",
-                                "state" : false,
-                            },
-                            {
-                                "label" : "галочек",
-                                "state" : false,
-                            },
+                        "checkboxes" : [
+                            {"label" : "Набор", "state" : false},
+                            {"label" : "плотно", "state" : false},
+                            {"label" : "упакованных", "state" : false},
+                            {"label" : "галочек", "state" : false},
+                            {"label" : "галочек", "state" : false},
+                            {"label" : "галочек", "state" : false},
+                            {"label" : "галочек", "state" : false},
+                            {"label" : "галочек", "state" : false},
+                            {"label" : "галочек", "state" : false},
+                            {"label" : "галочек", "state" : false},
+                            {"label" : "галочек", "state" : false},
                         ],
                         "packed" : true,
                     },
@@ -184,18 +128,18 @@
                 {
                     "type" : "radiobutton_list",
                     "data" : {
-                        "labels" : [
-                            "Набор",
-                            "плотно",
-                            "упакованных",
-                            "кружков",
-                            "кружков",
-                            "кружков",
-                            "кружков",
-                            "кружков",
-                            "кружков",
-                            "кружков",
-                            "кружков",
+                        "radiobuttons" : [
+                            {"label" : "Набор"},
+                            {"label" : "плотно"},
+                            {"label" : "упакованных"},
+                            {"label" : "кружков"},
+                            {"label" : "кружков"},
+                            {"label" : "кружков"},
+                            {"label" : "кружков"},
+                            {"label" : "кружков"},
+                            {"label" : "кружков"},
+                            {"label" : "кружков"},
+                            {"label" : "кружков"},
                         ],
                         "selected" : 1,
                         "packed" : true,
@@ -208,9 +152,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Содержимое шага 2.\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Donec tempus scelerisque elit sed consequat. Donec tincidunt felis ipsum, sit amet interdum arcu malesuada eget. Phasellus porta scelerisque tortor, quis elementum nisi vehicula lacinia. Proin quis purus nec justo maximus eleifend. Aenean vitae metus orci. Nunc ullamcorper lectus ut quam mollis, ac luctus magna hendrerit. Cras consequat fermentum lacus vitae tincidunt. Integer aliquet, sapien interdum varius vehicula, enim nulla maximus eros, quis scelerisque dui mi quis massa. Nunc ac leo justo. Pellentesque vulputate, eros et vehicula venenatis, sapien eros porttitor neque, nec dapibus elit arcu id eros. Duis nec justo augue. Nam et volutpat risus. Fusce malesuada ante quis metus mollis, vitae aliquam mauris euismod. Sed vel mi libero.\nSuspendisse sit amet risus ac justo ornare pharetra. Nullam sed sagittis mauris. Fusce in urna ac sapien cursus blandit et eu justo. Vestibulum faucibus pulvinar dapibus. Aliquam eu pellentesque dolor, vel facilisis diam. Etiam consectetur sapien ut elit blandit, in tristique dui commodo. Vivamus id semper leo. Aliquam vitae erat ut ipsum efficitur suscipit ac vitae sapien. Nam faucibus libero in tellus rutrum, nec elementum mi fermentum. Quisque ex purus, cursus at neque vel, tempus fringilla risus. Vestibulum lacinia, sapien et pretium scelerisque, massa turpis vestibulum diam, eu elementum justo arcu ut urna. Curabitur massa arcu, posuere quis congue in, bibendum sed urna. Nullam maximus, risus eget consectetur consectetur, mi felis faucibus diam, ut molestie dolor odio quis felis. Proin dictum erat sed ornare feugiat. Etiam libero dui, consequat eu bibendum ut, varius sit amet erat.\nUt rutrum mattis magna et iaculis. Vivamus non commodo dolor, in pellentesque diam. Interdum et malesuada fames ac ante ipsum primis in faucibus. In ac ullamcorper dolor. Fusce maximus aliquam congue. Donec laoreet nisi eu ex volutpat aliquam. Nunc id ex nulla. Sed sit amet dolor cursus, pretium magna quis, egestas felis. Praesent nisl est, rutrum sit amet placerat vitae, facilisis vitae nibh. Morbi blandit leo tortor, nec ornare orci ornare vulputate.",
-                    },
+                    "data" : {"text" : "Содержимое шага 2.\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Donec tempus scelerisque elit sed consequat. Donec tincidunt felis ipsum, sit amet interdum arcu malesuada eget. Phasellus porta scelerisque tortor, quis elementum nisi vehicula lacinia. Proin quis purus nec justo maximus eleifend. Aenean vitae metus orci. Nunc ullamcorper lectus ut quam mollis, ac luctus magna hendrerit. Cras consequat fermentum lacus vitae tincidunt. Integer aliquet, sapien interdum varius vehicula, enim nulla maximus eros, quis scelerisque dui mi quis massa. Nunc ac leo justo. Pellentesque vulputate, eros et vehicula venenatis, sapien eros porttitor neque, nec dapibus elit arcu id eros. Duis nec justo augue. Nam et volutpat risus. Fusce malesuada ante quis metus mollis, vitae aliquam mauris euismod. Sed vel mi libero.\nSuspendisse sit amet risus ac justo ornare pharetra. Nullam sed sagittis mauris. Fusce in urna ac sapien cursus blandit et eu justo. Vestibulum faucibus pulvinar dapibus. Aliquam eu pellentesque dolor, vel facilisis diam. Etiam consectetur sapien ut elit blandit, in tristique dui commodo. Vivamus id semper leo. Aliquam vitae erat ut ipsum efficitur suscipit ac vitae sapien. Nam faucibus libero in tellus rutrum, nec elementum mi fermentum. Quisque ex purus, cursus at neque vel, tempus fringilla risus. Vestibulum lacinia, sapien et pretium scelerisque, massa turpis vestibulum diam, eu elementum justo arcu ut urna. Curabitur massa arcu, posuere quis congue in, bibendum sed urna. Nullam maximus, risus eget consectetur consectetur, mi felis faucibus diam, ut molestie dolor odio quis felis. Proin dictum erat sed ornare feugiat. Etiam libero dui, consequat eu bibendum ut, varius sit amet erat.\nUt rutrum mattis magna et iaculis. Vivamus non commodo dolor, in pellentesque diam. Interdum et malesuada fames ac ante ipsum primis in faucibus. In ac ullamcorper dolor. Fusce maximus aliquam congue. Donec laoreet nisi eu ex volutpat aliquam. Nunc id ex nulla. Sed sit amet dolor cursus, pretium magna quis, egestas felis. Praesent nisl est, rutrum sit amet placerat vitae, facilisis vitae nibh. Morbi blandit leo tortor, nec ornare orci ornare vulputate."},
                 },
             ],
         },
@@ -219,9 +161,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -230,9 +170,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -241,9 +179,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -252,9 +188,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -263,9 +197,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -274,9 +206,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -285,9 +215,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -296,9 +224,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -307,9 +233,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -318,9 +242,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -329,9 +251,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -340,9 +260,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -351,9 +269,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -362,9 +278,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -373,9 +287,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -384,9 +296,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -395,9 +305,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -406,9 +314,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -417,9 +323,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -428,9 +332,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -439,9 +341,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -450,9 +350,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -461,9 +359,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -472,9 +368,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -483,9 +377,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -494,9 +386,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -505,9 +395,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -516,9 +404,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -527,9 +413,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -538,9 +422,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -549,9 +431,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -560,9 +440,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
@@ -571,9 +449,7 @@
             "widgets" : [
                 {
                     "type" : "text",
-                    "data" : {
-                        "text" : "Текст",
-                    },
+                    "data" : {"text" : "Текст"},
                 },
             ],
         },
