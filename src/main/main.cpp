@@ -1,9 +1,11 @@
 #include <iostream>
 
+#include <cstring>
 #include <iomanip>
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <typeinfo>
 #include <typeindex>
 #include <vector>
@@ -825,6 +827,73 @@ namespace Widgets
     {
         inline static constexpr const char *internal_name = "image_list";
 
+        class ImageData
+        {
+          public:
+            std::string file_name;
+            Graphics::TexObject texture = nullptr;
+            ivec2 pixel_size = ivec2(0);
+
+          private:
+            struct LoadedImage
+            {
+                std::shared_ptr<ImageData> data;
+
+                operator const std::string &() const
+                {
+                    DebugAssert("Loaded image handle is null.", bool(data));
+                    return data->file_name;
+                }
+
+                friend bool operator<(const std::string &a, const std::string &b)
+                {
+                    return a < b;
+                }
+            };
+
+            inline static std::set<LoadedImage, std::less<>> loaded_images;
+
+          public:
+            ImageData(std::string file_name) : file_name(file_name) // Don't use this constructor directly, as it doesn't provide caching. Use `Load()` instead.
+            {
+                MemoryFile file(file_name);
+                try
+                {
+                    Graphics::Image image(file);
+                    pixel_size = image.Size();
+                    texture = Graphics::TexObject();
+                    Graphics::TexUnit(texture).Interpolation(Graphics::linear).Wrap(Graphics::fill).SetData(image);
+                }
+                catch (std::exception &e)
+                {
+                    Program::Error("While loading image `", file_name, "`: ", e.what());
+                }
+            }
+
+            static std::shared_ptr<ImageData> Load(std::string file_name)
+            {
+                auto it = loaded_images.find(file_name);
+                if (it == loaded_images.end())
+                {
+                    return loaded_images.emplace(LoadedImage{std::make_shared<ImageData>(file_name)}).first->data;
+                }
+                else
+                {
+                    return it->data;
+                }
+            }
+
+            ImageData(const ImageData &) = delete;
+            ImageData &operator=(const ImageData &) = delete;
+
+            ~ImageData()
+            {
+                auto it = loaded_images.find(file_name);
+                DebugAssert("Unable to destroy ImageData: not in the cache.", it != loaded_images.end());
+                loaded_images.erase(it);
+            }
+        };
+
         struct Image
         {
             Reflect(Image)
@@ -833,8 +902,7 @@ namespace Widgets
                 (std::string)(file_name),
             )
 
-            ivec2 pixel_size = ivec2(0);
-            std::shared_ptr<Graphics::TexObject> texture;
+            std::shared_ptr<ImageData> data;
 
             ivec2 current_screen_size = ivec2(0);
         };
@@ -851,21 +919,7 @@ namespace Widgets
                 Program::Error("An image list must contain at least one image.");
 
             for (auto &image : images)
-            {
-                MemoryFile file(image.file_name);
-                try
-                {
-                    Graphics::Image loaded_image(file);
-                    image.pixel_size = loaded_image.Size();
-                    image.texture = std::make_shared<Graphics::TexObject>();
-                    auto &tex_obj = *image.texture;
-                    Graphics::TexUnit(tex_obj).Interpolation(Graphics::linear).Wrap(Graphics::fill).SetData(loaded_image);
-                }
-                catch (std::exception &e)
-                {
-                    Program::Error("While loading image `", image.file_name, "`: ", e.what());
-                }
-            }
+                image.data = ImageData::Load(image.file_name);
         }
 
         void Display(int index) override
@@ -877,7 +931,7 @@ namespace Widgets
 
             for (auto &image : images)
             {
-                image.current_screen_size = iround(image.pixel_size / float(image.pixel_size.x) * width);
+                image.current_screen_size = iround(image.data->pixel_size / float(image.data->pixel_size.x) * width);
                 clamp_var_min(max_size, image.current_screen_size);
             }
 
@@ -897,7 +951,7 @@ namespace Widgets
 
                     const auto &image = images[elem_index];
 
-                    if (!image.texture)
+                    if (!image.data->texture)
                         Program::Error("Internal error: Image handle is null.");
 
                     fvec2 image_size_relative_to_button = image.current_screen_size / fvec2(max_size);
@@ -905,7 +959,7 @@ namespace Widgets
                     fvec2 coord_b = 1 - coord_a;
 
                     ImGui::PushID(index);
-                    ImGui::ImageButton((void *)(uintptr_t)image.texture->Handle(), max_size, coord_a, coord_b, padding);
+                    ImGui::ImageButton((void *)(uintptr_t)image.data->texture.Handle(), max_size, coord_a, coord_b, padding);
                     if (image.tooltip && ImGui::IsItemHovered())
                     {
                         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(VisualOptions::tooltip_padding));
