@@ -36,10 +36,11 @@ namespace VisualOptions
         step_list_max_width_relative = 0.4;
 
     constexpr int
-        modal_window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings,
+        modal_window_flags_with_title = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings,
+        modal_window_flags = ImGuiWindowFlags_NoTitleBar | modal_window_flags_with_title,
         outer_margin = 6,
         step_list_min_width_pixels = 64,
-        image_preview_outer_margin = outer_margin + outer_margin/2,
+        image_preview_outer_margin = 48,
         tooltip_padding = 2;
 
     void GuiStyle(ImGuiStyle &style)
@@ -892,6 +893,11 @@ namespace Widgets
                 DebugAssert("Unable to destroy ImageData: not in the cache.", it != loaded_images.end());
                 loaded_images.erase(it);
             }
+
+            ImTextureID TextureHandle() const
+            {
+                return (ImTextureID)(uintptr_t)texture.Handle();
+            }
         };
 
         struct Image
@@ -912,6 +918,8 @@ namespace Widgets
             (std::vector<Image>)(images),
             (int)(columns)(=1),
         )
+
+        inline static const ImageData *last_clicked_image = 0;
 
         void Init() override
         {
@@ -955,11 +963,13 @@ namespace Widgets
                         Program::Error("Internal error: Image handle is null.");
 
                     fvec2 image_size_relative_to_button = image.current_screen_size / fvec2(max_size);
-                    fvec2 coord_a = (image_size_relative_to_button - 1) / 2;
+                    fvec2 coord_a = (1 / image_size_relative_to_button - 1) / -2;
                     fvec2 coord_b = 1 - coord_a;
 
                     ImGui::PushID(index);
-                    ImGui::ImageButton((void *)(uintptr_t)image.data->texture.Handle(), max_size, coord_a, coord_b, padding);
+                    bool button_pressed = ImGui::ImageButton(image.data->TextureHandle(), max_size, coord_a, coord_b, padding);
+                    ImGui::PopID();
+
                     if (image.tooltip && ImGui::IsItemHovered())
                     {
                         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(VisualOptions::tooltip_padding));
@@ -968,7 +978,12 @@ namespace Widgets
                         ImGui::EndTooltip();
                         ImGui::PopStyleVar();
                     }
-                    ImGui::PopID();
+
+                    if (button_pressed)
+                    {
+                        ImGui::OpenPopup("image_view_modal");
+                        last_clicked_image = &*image.data;
+                    }
 
                     elem_index++;
                 }
@@ -996,6 +1011,11 @@ struct StateMain : State
     Data::Procedure proc;
     std::size_t current_step_index = 0;
     bool first_tick_at_this_step = 1;
+
+    bool image_view_modal_open = 0;
+    float image_view_scale_power = 0;
+    fvec2 image_view_offset = fvec2(0);
+    float image_view_scale = 1;
 
     StateMain()
     {
@@ -1095,6 +1115,60 @@ struct StateMain : State
             if (widget_index != 0)
                 ImGui::Spacing();
             widget->Display(widget_index++);
+
+        }
+
+        { // Image preview modal
+            // Don't move this code below `EndChild()`, otherwise the modal won't open.
+
+            if (ImGui::IsPopupOpen("image_view_modal"))
+            {
+                if (!image_view_modal_open)
+                {
+                    image_view_modal_open = 1;
+                    image_view_scale_power = 0;
+                }
+
+                ImGui::SetNextWindowPos(ivec2(VisualOptions::image_preview_outer_margin));
+                ImGui::SetNextWindowSize(ivec2(window.Size() - 2 * VisualOptions::image_preview_outer_margin));
+
+                if (ImGui::BeginPopupModal("image_view_modal", 0, VisualOptions::modal_window_flags))
+                {
+                    const std::string text_close = "Закрыть";
+                    constexpr float min_scale_power = 0, max_scale_power = 4;
+
+                    float scale = pow(2, image_view_scale_power);
+                    ImGui::PushItemWidth(round(ImGui::GetWindowContentRegionWidth() / 3));
+                    ImGui::SliderFloat("Масштаб", &image_view_scale_power, min_scale_power, max_scale_power, Str(round(scale * 100), "%%").c_str());
+                    ImGui::PopItemWidth();
+                    clamp_var(image_view_scale_power, min_scale_power, max_scale_power);
+
+                    ImGui::SameLine();
+                    int close_button_width = ImGui::CalcTextSize(text_close.c_str()).x + ImGui::GetStyle().FramePadding.x * 2;
+                    ImGui::SetCursorPosX(ImGui::GetWindowContentRegionWidth() - close_button_width);
+                    if (ImGui::Button(text_close.c_str()) || Input::Button(Input::escape).pressed())
+                    {
+                        ImGui::CloseCurrentPopup();
+                    }
+
+                    const auto &image = *Widgets::ImageList::last_clicked_image;
+
+                    ivec2 image_region_size = iround(fvec2(ImGui::GetContentRegionAvail())).sub_y(2);
+                    fvec2 base_scale = image.pixel_size / fvec2(image_region_size);
+                    base_scale /= base_scale.max();
+
+                    fvec2 coord_a = (1 / base_scale - 1) / -2;
+                    fvec2 coord_b = 1 - coord_a;
+
+                    ImGui::Image(image.TextureHandle(), image_region_size, coord_a, coord_b, fvec4(1), ImGui::GetStyleColorVec4(ImGuiCol_Border));
+
+                    ImGui::EndPopup();
+                }
+            }
+            else
+            {
+                image_view_modal_open = 0;
+            }
         }
 
         ImGui::EndChild();
@@ -1134,24 +1208,6 @@ struct StateMain : State
                 }
                 ImGui::EndPopup();
             }
-        }
-
-        { // Image preview modal
-            if (ImGui::IsPopupOpen("image_view_modal"))
-            {
-                ImGui::SetNextWindowPos(ivec2(VisualOptions::image_preview_outer_margin));
-                ImGui::SetNextWindowSize(ivec2(window.Size() - 2 * VisualOptions::image_preview_outer_margin));
-
-                if (ImGui::BeginPopupModal("image_view_modal", 0, VisualOptions::modal_window_flags))
-                {
-                    if (ImGui::Button("Закрыть") || Input::Button(Input::escape).pressed())
-                    {
-                        ImGui::CloseCurrentPopup();
-                    }
-                    ImGui::EndPopup();
-                }
-            }
-
         }
 
         { // Exit modal
