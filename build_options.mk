@@ -14,8 +14,12 @@ override LDFLAGS += -Llib -lmingw32 -lSDL2main -lSDL2.dll -lfreetype -lopenal32 
 
 # Targets
 .PHONY: debug
-debug: override CXXFLAGS += -g -D_GLIBCXX_DEBUG
+debug: override CXXFLAGS += -g -D_GLIBCXX_ASSERTIONS
 debug: build
+
+.PHONY: debug_hard
+debug_hard: override CXXFLAGS += -g -D_GLIBCXX_DEBUG
+debug_hard: build
 
 .PHONY: release
 release: override CXXFLAGS += -DNDEBUG -O3
