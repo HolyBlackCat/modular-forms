@@ -1135,11 +1135,14 @@ struct StateMain : State
                 if (ImGui::BeginPopupModal("image_view_modal", 0, VisualOptions::modal_window_flags))
                 {
                     const std::string text_close = "Закрыть";
-                    constexpr float min_scale_power = 0, max_scale_power = 4;
 
-                    float scale = pow(2, image_view_scale_power);
+                    const auto &image = *Widgets::ImageList::last_clicked_image;
+                    ivec2 image_region_size = iround(fvec2(ImGui::GetContentRegionAvail())).sub_y(2);
+                    float min_scale_power = 0, max_scale_power = std::log2((image.pixel_size * 8 / fvec2(image_region_size)).max());
+
+                    image_view_scale = pow(2, image_view_scale_power);
                     ImGui::PushItemWidth(round(ImGui::GetWindowContentRegionWidth() / 3));
-                    ImGui::SliderFloat("Масштаб", &image_view_scale_power, min_scale_power, max_scale_power, Str(round(scale * 100), "%%").c_str());
+                    ImGui::SliderFloat("Масштаб", &image_view_scale_power, min_scale_power, max_scale_power, Str(round(image_view_scale * 100), "%%").c_str());
                     ImGui::PopItemWidth();
                     clamp_var(image_view_scale_power, min_scale_power, max_scale_power);
 
@@ -1151,14 +1154,14 @@ struct StateMain : State
                         ImGui::CloseCurrentPopup();
                     }
 
-                    const auto &image = *Widgets::ImageList::last_clicked_image;
+                    fvec2 relative_image_size = image.pixel_size / fvec2(image_region_size);
+                    relative_image_size /= relative_image_size.max();
 
-                    ivec2 image_region_size = iround(fvec2(ImGui::GetContentRegionAvail())).sub_y(2);
-                    fvec2 base_scale = image.pixel_size / fvec2(image_region_size);
-                    base_scale /= base_scale.max();
-
-                    fvec2 coord_a = (1 / base_scale - 1) / -2;
+                    fvec2 coord_a = (1 / relative_image_size - 1) / -2;
                     fvec2 coord_b = 1 - coord_a;
+                    fvec2 coord_mid = (coord_a + coord_b) / 2;
+                    coord_a = (coord_a - coord_mid) / image_view_scale + coord_mid;
+                    coord_b = (coord_b - coord_mid) / image_view_scale + coord_mid;
 
                     ImGui::Image(image.TextureHandle(), image_region_size, coord_a, coord_b, fvec4(1), ImGui::GetStyleColorVec4(ImGuiCol_Border));
 
