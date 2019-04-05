@@ -16,10 +16,19 @@
                     "type" : "line",
                 },
                 {
-                    "type" : "image",
+                    "type" : "image_list",
                     "data" : {
-                        "file_name" : "test_pic.jpg",
-                        "width_rel" : 0.5,
+                        "images" : [
+                            {
+                                "tooltip" : "Картинка 1",
+                                "file_name" : "test_pic.jpg",
+                            },
+                            {
+                                "tooltip" : "Картинка 2",
+                                "file_name" : "test_pic_2.png",
+                            },
+                        ],
+                        "columns" : 4,
                     },
                 },
                 {

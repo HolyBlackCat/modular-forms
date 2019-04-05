@@ -508,7 +508,7 @@ namespace Widgets
             if (labels.size() == 0)
                 Program::Error("A button list must contain at least one button.");
 
-            // We can't calculate a proper button width here, as fonts don't seem to be loaded this early.
+            // We can't calculate proper width here, as fonts don't seem to be loaded this early.
             if (packed && *packed)
                 size_x = -1;
         }
@@ -578,7 +578,7 @@ namespace Widgets
             if (list.size() == 0)
                 Program::Error("A checkbox list must contain at least one checkbox.");
 
-            // We can't calculate a proper button width here, as fonts don't seem to be loaded this early.
+            // We can't calculate proper width here, as fonts don't seem to be loaded this early.
             if (packed && *packed)
                 size_x = -1;
         }
@@ -732,54 +732,108 @@ namespace Widgets
         }
     };
 
-    struct Image : Data::WidgetBase<Image>
+    struct ImageList : Data::WidgetBase<ImageList>
     {
-        inline static constexpr const char *internal_name = "image";
+        inline static constexpr const char *internal_name = "image_list";
 
-        Reflect(Image)
+        struct Image
+        {
+            Reflect(Image)
+            (
+                (std::optional<std::string>)(tooltip),
+                (std::string)(file_name),
+            )
+
+            ivec2 pixel_size = ivec2(0);
+            std::shared_ptr<Graphics::TexObject> texture;
+
+            ivec2 current_screen_size = ivec2(0);
+        };
+
+        Reflect(ImageList)
         (
-            (std::string)(file_name),
-            (std::optional<float>)(width_abs), // Exactly one of those two options has to be specified.
-            (std::optional<float>)(width_rel), //
+            (std::vector<Image>)(images),
+            (int)(columns)(=1),
         )
-
-        ivec2 pixel_size = ivec2(0);
-        float width = 1;
-        bool use_relative_width = 0;
-        std::shared_ptr<Graphics::TexObject> texture;
 
         void Init() override
         {
-            if (bool(width_abs) == bool(width_rel))
-                Program::Error("Exactly one of the two options has to be specified: `width_abs` or `width_rel.");
+            if (images.size() == 0)
+                Program::Error("An image list must contain at least one image.");
 
-            use_relative_width = bool(width_rel);
-            width = (use_relative_width ? *width_rel : *width_abs);
-
-            MemoryFile file(file_name);
-            try
+            for (auto &image : images)
             {
-                Graphics::Image image(file);
-                pixel_size = image.Size();
-                texture = std::make_shared<Graphics::TexObject>();
-                auto &tex_obj = *texture;
-                Graphics::TexUnit(tex_obj).Interpolation(Graphics::linear).Wrap(Graphics::clamp).SetData(image);
-            }
-            catch (std::exception &e)
-            {
-                Program::Error("While loading image `", file_name, "`: ", e.what());
+                MemoryFile file(image.file_name);
+                try
+                {
+                    Graphics::Image loaded_image(file);
+                    image.pixel_size = loaded_image.Size();
+                    image.texture = std::make_shared<Graphics::TexObject>();
+                    auto &tex_obj = *image.texture;
+                    Graphics::TexUnit(tex_obj).Interpolation(Graphics::linear).Wrap(Graphics::fill).SetData(loaded_image);
+                }
+                catch (std::exception &e)
+                {
+                    Program::Error("While loading image `", image.file_name, "`: ", e.what());
+                }
             }
         }
 
         void Display(int index) override
         {
-            (void)index;
-            if (!texture)
-                Program::Error("Internal error: Image handle is null.");
-            fvec2 size = pixel_size / pixel_size.x * width;
-            if (use_relative_width)
-                size *= ImGui::GetWindowContentRegionWidth();
-            ImGui::Image((void *)(uintptr_t)texture->Handle(), round(size), fvec2(0), fvec2(1), fvec4(1), ImGui::GetStyleColorVec4(ImGuiCol_Border));
+            constexpr int padding = 2, tooltip_padding = 2;;
+
+            int width = ImGui::GetWindowContentRegionWidth() / columns - ImGui::GetStyle().ItemSpacing.x - padding * 2;
+            ivec2 max_size = ivec2(0);
+
+            for (auto &image : images)
+            {
+                image.current_screen_size = iround(image.pixel_size / float(image.pixel_size.x) * width);
+                clamp_var_min(max_size, image.current_screen_size);
+            }
+
+            int elems_per_column = columns != 1 ? (images.size() + columns - 1) / columns : images.size();
+
+            ImGui::Columns(columns, 0, 0);
+
+            int cur_y = ImGui::GetCursorPosY();
+
+            int elem_index = 0;
+            for (int i = 0; i < columns; i++)
+            {
+                for (int j = 0; j < elems_per_column; j++)
+                {
+                    if (elem_index >= int(images.size()))
+                        break; // I don't think we want to terminate the outer loop early. We want to use all columns no matter what.
+
+                    const auto &image = images[elem_index];
+
+                    if (!image.texture)
+                        Program::Error("Internal error: Image handle is null.");
+
+                    fvec2 image_size_relative_to_button = image.current_screen_size / fvec2(max_size);
+                    fvec2 coord_a = (image_size_relative_to_button - 1) / 2;
+                    fvec2 coord_b = 1 - coord_a;
+
+                    ImGui::PushID(index);
+                    ImGui::ImageButton((void *)(uintptr_t)image.texture->Handle(), max_size, coord_a, coord_b, padding);
+                    if (image.tooltip && ImGui::IsItemHovered())
+                    {
+                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(tooltip_padding));
+                        ImGui::BeginTooltip();
+                        ImGui::TextUnformatted(image.tooltip->c_str());
+                        ImGui::EndTooltip();
+                        ImGui::PopStyleVar();
+                    }
+                    ImGui::PopID();
+
+                    elem_index++;
+                }
+
+                ImGui::NextColumn();
+                if (i != columns-1)
+                    ImGui::SetCursorPosY(cur_y);
+            }
         }
     };
 }
@@ -945,16 +999,17 @@ struct StateMain : State
             {
                 ImGui::SetNextWindowPos(ivec2(VisualOptions::image_preview_outer_margin));
                 ImGui::SetNextWindowSize(ivec2(window.Size() - 2 * VisualOptions::image_preview_outer_margin));
+
+                if (ImGui::BeginPopupModal("image_view_modal", 0, VisualOptions::modal_window_flags))
+                {
+                    if (ImGui::Button("Закрыть") || Input::Button(Input::escape).pressed())
+                    {
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::EndPopup();
+                }
             }
 
-            if (ImGui::BeginPopupModal("image_view_modal", 0, VisualOptions::modal_window_flags))
-            {
-                if (ImGui::Button("Закрыть") || Input::Button(Input::escape).pressed())
-                {
-                    ImGui::CloseCurrentPopup();
-                }
-                ImGui::EndPopup();
-            }
         }
 
         { // Exit modal
