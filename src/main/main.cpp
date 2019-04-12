@@ -29,6 +29,7 @@
 #include <imgui_impl_sdl.h>
 
 Interface::Window window;
+Input::Mouse mouse;
 
 namespace VisualOptions
 {
@@ -1016,6 +1017,9 @@ struct StateMain : State
     float image_view_scale_power = 0;
     fvec2 image_view_offset = fvec2(0);
     float image_view_scale = 1;
+    bool image_view_dragging_now = 1;
+    fvec2 image_view_drag_click_pos = fvec2(0);
+    fvec2 image_view_drag_initial_offset = fvec2(0);
 
     StateMain()
     {
@@ -1123,12 +1127,6 @@ struct StateMain : State
 
             if (ImGui::IsPopupOpen("image_view_modal"))
             {
-                if (!image_view_modal_open)
-                {
-                    image_view_modal_open = 1;
-                    image_view_scale_power = 0;
-                }
-
                 ImGui::SetNextWindowPos(ivec2(VisualOptions::image_preview_outer_margin));
                 ImGui::SetNextWindowSize(ivec2(window.Size() - 2 * VisualOptions::image_preview_outer_margin));
 
@@ -1137,12 +1135,29 @@ struct StateMain : State
                     const std::string text_close = "Закрыть";
 
                     const auto &image = *Widgets::ImageList::last_clicked_image;
-                    ivec2 image_region_size = iround(fvec2(ImGui::GetContentRegionAvail())).sub_y(2);
-                    float min_scale_power = 0, max_scale_power = std::log2((image.pixel_size * 8 / fvec2(image_region_size)).max());
+                    ivec2 available_size = iround(fvec2(ImGui::GetContentRegionAvail())).sub_y(ImGui::GetFrameHeightWithSpacing() + 2);
+
+                    fvec2 relative_image_size = image.pixel_size / fvec2(available_size);
+                    constexpr float max_scale = 8;
+                    float default_scale = clamp_max(1 / relative_image_size.max(), max_scale);
+                    float min_scale = min(default_scale * 0.75, 1);
+                    float min_scale_power = std::log2(min_scale), max_scale_power = std::log2(max_scale);
+
+                    { // Initialize viewer
+                        if (!image_view_modal_open)
+                        {
+                            image_view_modal_open = 1;
+                            image_view_scale_power = 0;
+                            image_view_offset = fvec2(0);
+                            image_view_dragging_now = 0;
+                            image_view_scale_power = std::log2(default_scale);
+                        }
+                    }
 
                     image_view_scale = pow(2, image_view_scale_power);
+
                     ImGui::PushItemWidth(round(ImGui::GetWindowContentRegionWidth() / 3));
-                    ImGui::SliderFloat("Масштаб", &image_view_scale_power, min_scale_power, max_scale_power, Str(round(image_view_scale * 100), "%%").c_str());
+                    ImGui::SliderFloat("Масштаб", &image_view_scale_power, min_scale_power, max_scale_power, Str(iround(image_view_scale * 100), "%%").c_str());
                     ImGui::PopItemWidth();
                     clamp_var(image_view_scale_power, min_scale_power, max_scale_power);
 
@@ -1154,16 +1169,38 @@ struct StateMain : State
                         ImGui::CloseCurrentPopup();
                     }
 
-                    fvec2 relative_image_size = image.pixel_size / fvec2(image_region_size);
-                    relative_image_size /= relative_image_size.max();
+                    { // Drag image
+                        // This code has to be located here because of `GetCursorPos()`.
+                        fvec2 mouse_relative_pos = (mouse.pos() - fvec2(ImGui::GetCursorScreenPos())) / available_size;
+                        if (mouse.left.pressed() && (mouse_relative_pos >= 0).all() && (mouse_relative_pos <= 1).all())
+                        {
+                            image_view_dragging_now = 1;
+                            image_view_drag_click_pos = mouse_relative_pos;
+                            image_view_drag_initial_offset = image_view_offset;
+                        }
+                        if (mouse.left.up() || !window.HasMouseFocus())
+                        {
+                            image_view_dragging_now = 0;
+                        }
+                        if (image_view_dragging_now)
+                        {
+                            image_view_offset = image_view_drag_initial_offset + (mouse_relative_pos - image_view_drag_click_pos) / image_view_scale * available_size;
+                            clamp_var(image_view_offset, -image.pixel_size/2, image.pixel_size/2);
+                        }
+                    }
 
-                    fvec2 coord_a = (1 / relative_image_size - 1) / -2;
-                    fvec2 coord_b = 1 - coord_a;
-                    fvec2 coord_mid = (coord_a + coord_b) / 2;
-                    coord_a = (coord_a - coord_mid) / image_view_scale + coord_mid;
-                    coord_b = (coord_b - coord_mid) / image_view_scale + coord_mid;
+                    ivec2 image_pixel_offset = iround(image_view_offset * image_view_scale);
 
-                    ImGui::Image(image.TextureHandle(), image_region_size, coord_a, coord_b, fvec4(1), ImGui::GetStyleColorVec4(ImGuiCol_Border));
+                    ivec2 image_visual_size = image.pixel_size * image_view_scale;
+
+                    ivec2 window_coord_a = image_pixel_offset + (available_size - image_visual_size) / 2;
+                    ivec2 window_coord_b = window_coord_a + image_visual_size;
+                    fmat3 m = linear_mapping<fvec2>(window_coord_a, window_coord_b, fvec2(0), fvec2(1)).matrix();
+
+                    fvec2 tex_coord_a = (m * ivec2(0).to_vec3(1)).to_vec2();
+                    fvec2 tex_coord_b = (m * available_size.to_vec3(1)).to_vec2();
+
+                    ImGui::Image(image.TextureHandle(), available_size, tex_coord_a, tex_coord_b, fvec4(1), ImGui::GetStyleColorVec4(ImGuiCol_Border));
 
                     ImGui::EndPopup();
                 }

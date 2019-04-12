@@ -1,5 +1,5 @@
-# Source directories
-SOURCE_DIRS ?= src lib
+# Sources
+override SOURCE_DIRS += src lib
 
 # Object directory
 OBJECT_DIR ?= obj
@@ -23,7 +23,7 @@ debug_hard: build
 
 .PHONY: release
 release: override CXXFLAGS += -DNDEBUG -O3
-release: override LDFLAGS += -O3 -s
+release: override LDFLAGS += -O3 -s -mwindows
 release: build
 
 # File-specific flags

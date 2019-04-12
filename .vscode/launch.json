@@ -8,14 +8,15 @@
             "name": "Debug",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/modular-forms.exe",
+            "program": "${workspaceFolder}/bin/modular-forms",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/bin",
             "environment": [],
             "externalConsole": true,
             "MIMode": "gdb",
-            "miDebuggerPath": "gdb.exe",
+            "windows": {"miDebuggerPath": "gdb.exe",},
+            "linux": {"miDebuggerPath": "gdb",},
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
