@@ -9,6 +9,8 @@
 #include "program/errors.h"
 #include "utils/mat.h"
 
+#include "main/image_viewer.h"
+
 #include <imgui.h>
 
 namespace Widgets
@@ -427,7 +429,7 @@ namespace Widgets
 
                     if (button_pressed)
                     {
-                        ImGui::OpenPopup("image_view_modal");
+                        ImGui::OpenPopup(GuiElements::ImageViewer::modal_name);
                         Data::last_clicked_image = &*image.data;
                     }
 
