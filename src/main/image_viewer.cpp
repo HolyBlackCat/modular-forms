@@ -1,7 +1,5 @@
 #include "image_viewer.h"
 
-#include <imgui.h>
-
 #include "main/common.h"
 #include "main/data.h"
 #include "main/visual_options.h"

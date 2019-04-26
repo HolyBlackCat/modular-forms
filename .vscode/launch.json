@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/bin/modular-forms",
             "args": [],
-            "stopAtEntry": false,
+            "stopAtEntry": true,
             "cwd": "${workspaceFolder}/bin",
             "environment": [],
             "externalConsole": true,
@@ -21,6 +21,11 @@
                 {
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Catch exceptions",
+                    "text": "-exec catch catch",
                     "ignoreFailures": true
                 }
             ]

@@ -1,16 +1,6 @@
 #include "main/data.h"
 
-#include <optional>
-#include <set>
-#include <string>
-
-#include "graphics/texture.h"
 #include "main/visual_options.h"
-#include "program/errors.h"
-#include "utils/mat.h"
-
-#include <imgui.h>
-
 #include "main/image_viewer.h"
 
 namespace Widgets

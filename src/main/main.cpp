@@ -1,31 +1,8 @@
 #include <iostream>
 
-#include <cstring>
-#include <iomanip>
-#include <memory>
-#include <set>
-
-#include <imgui.h>
-#include <imgui_freetype.h>
-#include <imgui_impl_opengl2.h>
-#include <imgui_impl_sdl.h>
-
-#include "graphics/complete.h"
-#include "input/complete.h"
-#include "interface/window.h"
-#include "program/exit.h"
-#include "reflection/complete.h"
-#include "utils/adjust.h"
-#include "utils/clock.h"
-#include "utils/poly_storage.h"
-#include "utils/json.h"
-#include "utils/mat.h"
-#include "utils/meta.h"
-#include "utils/metronome.h"
-#include "utils/unicode.h"
-
 #include "main/common.h"
 #include "main/data.h"
+#include "main/file_selector.h"
 #include "main/image_viewer.h"
 #include "main/visual_options.h"
 
@@ -61,6 +38,7 @@ struct StateMain : State
     bool first_tick_at_this_step = 1;
 
     GuiElements::ImageViewer image_viewer;
+    GuiElements::FileSelector file_selector;
 
     StateMain()
     {
@@ -116,20 +94,22 @@ struct StateMain : State
 
         ImGui::PopStyleVar(2);
 
-        if (ImGui::BeginMenuBar())
-        {
-            if (ImGui::BeginMenu("Файл"))
+        { // Menu bar
+            if (ImGui::BeginMenuBar())
             {
-                if (ImGui::MenuItem("Открыть"))
-                    std::cout << "[Open file]\n";
+                if (ImGui::BeginMenu("Файл"))
+                {
+                    if (ImGui::MenuItem("Открыть"))
+                        file_selector.Open();
 
-                if (ImGui::MenuItem("Выйти"))
-                    exit_requested = 1;
+                    if (ImGui::MenuItem("Выйти"))
+                        exit_requested = 1;
 
-                ImGui::EndMenu();
+                    ImGui::EndMenu();
+                }
+
+                ImGui::EndMenuBar();
             }
-
-            ImGui::EndMenuBar();
         }
 
         ImGui::Columns(2, "main_columns", 1);
@@ -185,6 +165,7 @@ struct StateMain : State
 
         // Don't move this code below `EndChild()`, otherwise the modals won't open.
         image_viewer.Display();
+        file_selector.Display();
 
         ImGui::EndChild();
 
@@ -297,8 +278,11 @@ int main()
             ImVector<ImWchar> glyph_ranges;
             glyph_ranges_builder.BuildRanges(&glyph_ranges);
 
-            if (!io.Fonts->AddFontFromFileTTF("assets/Roboto-Regular.ttf", 20.0f, 0, glyph_ranges.begin()))
-                Program::Error("Unable to load font.");
+            std::string font_filename = "assets/Roboto-Regular.ttf";
+            if (!std::filesystem::exists(font_filename))
+                Program::Error("Font file `", font_filename, "` is missing.");
+            if (!io.Fonts->AddFontFromFileTTF(font_filename.c_str(), 20.0f, 0, glyph_ranges.begin()))
+                Program::Error("Unable to load font `", font_filename, "`.");
 
             ImGuiFreeType::BuildFontAtlas(io.Fonts, ImGuiFreeType::MonoHinting);
 

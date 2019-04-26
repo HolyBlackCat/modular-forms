@@ -1,16 +1,34 @@
+#include <cstring>
 #include <filesystem>
+#include <iomanip>
+#include <memory>
+#include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
 #include <imgui.h>
+#include <imgui_freetype.h>
+#include <imgui_impl_opengl2.h>
+#include <imgui_impl_sdl.h>
+#include <imgui_stdlib.h>
 
+#include "graphics/complete.h"
 #include "graphics/texture.h"
 #include "input/complete.h"
 #include "interface/window.h"
 #include "program/errors.h"
+#include "program/exit.h"
 #include "reflection/complete.h"
+#include "utils/adjust.h"
+#include "utils/clock.h"
+#include "utils/format.h"
 #include "utils/json.h"
 #include "utils/mat.h"
+#include "utils/mat.h"
 #include "utils/memory_file.h"
+#include "utils/meta.h"
+#include "utils/metronome.h"
 #include "utils/poly_storage.h"
 #include "utils/strings.h"
+#include "utils/unicode.h"
