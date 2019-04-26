@@ -17,7 +17,7 @@
 #include "reflection/complete.h"
 #include "utils/adjust.h"
 #include "utils/clock.h"
-#include "utils/dynamic_storage.h"
+#include "utils/poly_storage.h"
 #include "utils/json.h"
 #include "utils/mat.h"
 #include "utils/meta.h"
@@ -314,7 +314,7 @@ int main()
 
     Graphics::SetClearColor(fvec3(1));
 
-    Dyn<State> state = state.make<StateMain>();
+    Poly::Storage<State> state = Poly::make_derived<StateMain>;
 
     while (1)
     {

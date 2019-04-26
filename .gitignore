@@ -1,8 +1,4 @@
 *.exe
-*.o
-*.d
-*.gch
-*.depend
-*.layout
+obj/**
 compile_commands.json
-.config.mk
+.current_mode.mk

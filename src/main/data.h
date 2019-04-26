@@ -11,7 +11,7 @@
 #include "graphics/texture.h"
 #include "program/errors.h"
 #include "reflection/complete.h"
-#include "utils/dynamic_storage.h"
+#include "utils/poly_storage.h"
 #include "utils/json.h"
 #include "utils/memory_file.h"
 #include "utils/strings.h"
@@ -56,23 +56,23 @@ namespace Data // Widget system and JSON serialization
 
     struct WidgetInternalFunctions
     {
-        using Widget = Dyn<WidgetBase_Low, WidgetInternalFunctions>;
+        using Widget = Poly::Storage<WidgetBase_Low, WidgetInternalFunctions>;
 
         bool is_reflected = 0;
         const char *internal_name = 0;
-        void (*from_json)(Dynamic::Param<WidgetBase_Low>, Json::View, std::string);
-        void (*to_json)(Dynamic::Param<const WidgetBase_Low>, int, int, std::string &);
+        void (*from_json)(Poly::Param<WidgetBase_Low>, Json::View, std::string);
+        void (*to_json)(Poly::Param<const WidgetBase_Low>, int, int, std::string &);
 
         template <typename T> constexpr void _make()
         {
             is_reflected = Refl::is_reflected<T>;
             internal_name = T::internal_name;
-            from_json = [](Dynamic::Param<WidgetBase_Low> obj, Json::View view, std::string elem_name)
+            from_json = [](Poly::Param<WidgetBase_Low> obj, Json::View view, std::string elem_name)
             {
                 if constexpr (Refl::is_reflected<T>)
                     obj.template get<T>() = ReflectedObjectFromJson<T>(view[elem_name]);
             };
-            to_json = [](Dynamic::Param<const WidgetBase_Low> obj, int indent_steps, int indent_step_w, std::string &str)
+            to_json = [](Poly::Param<const WidgetBase_Low> obj, int indent_steps, int indent_step_w, std::string &str)
             {
                 if constexpr (Refl::is_reflected<T>)
                 {
@@ -142,7 +142,7 @@ namespace Data // Widget system and JSON serialization
         else if constexpr (std::is_same_v<T, Widget>)
         {
             T ret = widget_type_manager().MakeWidget(view["type"].GetString());
-            ret.funcs().from_json(ret, view, "data");
+            ret.dynamic().from_json(ret, view, "data");
             ret->Init();
             return ret;
         }
@@ -274,11 +274,11 @@ namespace Data // Widget system and JSON serialization
             std::string cur_indent_str(indent_step_w * indent_steps, ' ');
 
             output += "{\n";
-            output += cur_indent_str + indent_step_str + R"("type" : ")" + object.funcs().internal_name + R"(",)" + '\n';
-            if (object.funcs().is_reflected)
+            output += cur_indent_str + indent_step_str + R"("type" : ")" + object.dynamic().internal_name + R"(",)" + '\n';
+            if (object.dynamic().is_reflected)
             {
                 output += cur_indent_str + indent_step_str + R"("data" : )";
-                object.funcs().to_json(object, indent_steps+1, indent_step_w, output);
+                object.dynamic().to_json(object, indent_steps+1, indent_step_w, output);
                 output += ",\n";
             }
 
