@@ -30,7 +30,7 @@ $(mode_flags) LDFLAGS += -O3 -s -mwindows
 FILE_SPECIFIC_FLAGS := lib/*.cpp > -O3
 
 # Precompiled headers
-PRECOMPILED_HEADERS := src/game/*.cpp>src/game/master.hpp
+PRECOMPILED_HEADERS := src/main/*.cpp>src/main/master.hpp
 
 # Code generation
 GEN_CXXFLAGS := -std=c++2a -Wall -Wextra -pedantic-errors
