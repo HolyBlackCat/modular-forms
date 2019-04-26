@@ -9,9 +9,9 @@
 #include "program/errors.h"
 #include "utils/mat.h"
 
-#include "main/image_viewer.h"
-
 #include <imgui.h>
+
+#include "main/image_viewer.h"
 
 namespace Widgets
 {

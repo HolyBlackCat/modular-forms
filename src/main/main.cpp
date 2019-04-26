@@ -5,6 +5,11 @@
 #include <memory>
 #include <set>
 
+#include <imgui.h>
+#include <imgui_freetype.h>
+#include <imgui_impl_opengl2.h>
+#include <imgui_impl_sdl.h>
+
 #include "graphics/complete.h"
 #include "input/complete.h"
 #include "interface/window.h"
@@ -23,11 +28,6 @@
 #include "main/data.h"
 #include "main/image_viewer.h"
 #include "main/visual_options.h"
-
-#include <imgui.h>
-#include <imgui_freetype.h>
-#include <imgui_impl_opengl2.h>
-#include <imgui_impl_sdl.h>
 
 Interface::Window window;
 Input::Mouse mouse;
