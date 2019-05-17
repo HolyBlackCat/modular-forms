@@ -74,7 +74,7 @@ namespace Interface
             instance = this;
     }
 
-    Window &Window::operator=(Window &&other) noexcept
+    Window &Window::operator=(Window other) noexcept
     {
         std::swap(data, other.data);
         if (instance == &other)
@@ -98,6 +98,7 @@ namespace Interface
         constexpr const char *extra_error_details =
             OnPlatform(PC)
             (
+                "\n"
                 "If you have several video cards, change your video driver settings\n"
                 "to make it use the best available video card for this application.\n"
                 "If it doesn't help, try updating your video card driver.\n"
@@ -105,6 +106,7 @@ namespace Interface
             )
             OnPlatform(MOBILE)
             (
+                "\n"
                 "Your device doesn't support this application.";
             )
 
@@ -203,7 +205,7 @@ namespace Interface
             display_mode.h = size.y;
             have_display_mode = bool(SDL_GetClosestDisplayMode(settings.display, &display_mode, &display_mode));
         }
-        if (!settings.fixed_size) // If the window is resizable, or if a closest mode couldn't be obtained, try using the desktop mode.
+        if (!have_display_mode) // If the window is resizable, or if a closest mode couldn't be obtained, try using the desktop mode.
         {
             have_display_mode = !SDL_GetDesktopDisplayMode(settings.display, &display_mode);
         }
@@ -355,19 +357,33 @@ namespace Interface
         return data.mode;
     }
 
-    void Window::ProcessEvents(std::function<void(const SDL_Event &)> func)
+    void Window::ProcessEvents(std::vector<std::function<bool(SDL_Event &)>> hooks)
     {
         data.tick_counter++;
 
         data.text_input.clear();
         data.mouse_movement = ivec2(0);
 
+        data.dropped_files = {};
+        data.dropped_strings = {};
+
         int index;
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
-            if (func)
-                func(event);
+            bool drop_event = 0;
+
+            for (auto &hook : hooks)
+            {
+                if (!hook(event))
+                {
+                    drop_event = 1;
+                    break;
+                }
+            }
+
+            if (drop_event)
+                continue;
 
             switch (event.type)
             {
@@ -463,6 +479,18 @@ namespace Interface
               case SDL_TEXTINPUT:
                 data.text_input += event.text.text;
                 break;
+
+              case SDL_DROPFILE:
+              case SDL_DROPTEXT:
+                if (event.drop.file != 0)
+                {
+                    FINALLY( SDL_free(event.drop.file); )
+
+                    if (event.type == SDL_DROPFILE)
+                        data.dropped_files.emplace_back(event.drop.file);
+                    else
+                        data.dropped_strings.emplace_back(event.drop.file);
+                }
             }
         }
 
@@ -537,5 +565,15 @@ namespace Interface
     void Window::RelativeMouseMode(bool relative)
     {
         SDL_SetRelativeMouseMode(SDL_bool(relative));
+    }
+
+    const std::vector<std::string> &Window::DroppedFiles()
+    {
+        return data.dropped_files;
+    }
+
+    const std::vector<std::string> &Window::DroppedStrings()
+    {
+        return data.dropped_strings;
     }
 }

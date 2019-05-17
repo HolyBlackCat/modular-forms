@@ -7,20 +7,14 @@
 #include <string>
 #include <vector>
 
-#include <imgui.h>
-#include <imgui_freetype.h>
-#include <imgui_impl_opengl2.h>
-#include <imgui_impl_sdl.h>
-#include <imgui_stdlib.h>
-
 #include "graphics/complete.h"
 #include "graphics/texture.h"
 #include "input/complete.h"
+#include "interface/gui.h"
 #include "interface/window.h"
 #include "program/errors.h"
 #include "program/exit.h"
 #include "reflection/complete.h"
-#include "utils/adjust.h"
 #include "utils/clock.h"
 #include "utils/format.h"
 #include "utils/json.h"
@@ -32,3 +26,4 @@
 #include "utils/poly_storage.h"
 #include "utils/strings.h"
 #include "utils/unicode.h"
+#include "utils/with.h"

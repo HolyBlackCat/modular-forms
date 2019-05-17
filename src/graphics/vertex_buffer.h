@@ -155,7 +155,7 @@ namespace Graphics
         }
 
         VertexBuffer(VertexBuffer &&other) noexcept : data(std::exchange(other.data, {})) {}
-        VertexBuffer &operator=(VertexBuffer &&other) noexcept // Note the pass by value to utilize copy&swap idiom.
+        VertexBuffer &operator=(VertexBuffer other) noexcept // Note the pass by value to utilize copy&swap idiom.
         {
             std::swap(data, other.data);
             return *this;
@@ -165,7 +165,8 @@ namespace Graphics
         {
             if (StorageBound())
                 Buffers::ForgetBoundBuffer(); // GL unbinds the buffer automatically.
-            glDeleteBuffers(1, &data.handle); // Deleting 0 is a no-op.
+            if (data.handle)
+                glDeleteBuffers(1, &data.handle); // Deleting 0 is a no-op, but GL could be unloaded at this point.
         }
 
         explicit operator bool() const

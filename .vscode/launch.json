@@ -25,7 +25,7 @@
                 },
                 {
                     "description": "Catch exceptions",
-                    "text": "-exec catch catch",
+                    "text": "-exec catch throw",
                     "ignoreFailures": true
                 }
             ]

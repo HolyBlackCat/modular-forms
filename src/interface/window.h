@@ -11,8 +11,6 @@
 #include "input/enum.h"
 #include "utils/mat.h"
 
-union SDL_Event;
-
 namespace Interface
 {
     enum FullscreenMode {windowed, fullscreen, borderless_fullscreen};
@@ -88,6 +86,8 @@ namespace Interface
             bool keyboard_focus = 0, mouse_focus = 0;
 
             std::vector<InputTimes> input_times;
+
+            std::vector<std::string> dropped_files, dropped_strings;
         };
 
         Data data;
@@ -95,7 +95,7 @@ namespace Interface
       public:
         Window();
         Window(Window &&other) noexcept;
-        Window &operator=(Window &&other) noexcept;
+        Window &operator=(Window other) noexcept;
         ~Window();
 
         Window(std::string name, ivec2 size, FullscreenMode mode = windowed, const WindowSettings &settings = {});
@@ -117,7 +117,7 @@ namespace Interface
         void SetMode(FullscreenMode new_mode); // If the window is not resizable, then `borderless_fullscreen` (which requires a window resize) acts as `fullscreen`.
         FullscreenMode Mode() const;
 
-        void ProcessEvents(std::function<void(const SDL_Event &)> func = 0);
+        void ProcessEvents(std::vector<std::function<bool(SDL_Event &)>> hooks = {}); // If a hook returns `false`, the current event is discarded.
         void SwapBuffers();
 
         // Those counters start from 1.
@@ -128,8 +128,8 @@ namespace Interface
         bool Resized() const;
         bool ExitRequested() const;
 
-        bool HasKeyboardFocus() const; // Returns 1 if the window active.
-        bool HasMouseFocus() const; // Returns 1 if the window if hovered.
+        bool HasKeyboardFocus() const; // Returns 1 if the window is active.
+        bool HasMouseFocus() const; // Returns 1 if the window is hovered.
 
         std::string TextInput() const;
 
@@ -140,5 +140,8 @@ namespace Interface
 
         void HideCursor(bool hide = 1);
         void RelativeMouseMode(bool relative = 1);
+
+        const std::vector<std::string> &DroppedFiles(); // Files dragged onto the window at the last tick.
+        const std::vector<std::string> &DroppedStrings(); // Text dragged onto the window at the last tick.
     };
 }

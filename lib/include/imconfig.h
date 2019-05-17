@@ -14,6 +14,9 @@
 #pragma once
 
 //---- Define assertion handler. Defaults to calling assert().
+#include "program/errors.h"
+// We don't disable those even in release builds for extra safety.
+#define IM_ASSERT(expr) (bool(expr) ? void() : ::Program::HardError("ImGui assertion failed: `" #expr "`."))
 //#define IM_ASSERT(_EXPR)  MyAssert(_EXPR)
 //#define IM_ASSERT(_EXPR)  ((void)(_EXPR))     // Disable asserts
 
@@ -51,7 +54,6 @@
 
 //---- Define constructor and implicit cast operators to convert back<>forth between your math types and ImVec2/ImVec4.
 // This will be inlined as part of ImVec2 and ImVec4 class declarations.
-
 #include "utils/mat.h"
 
 #define IM_VEC2_CLASS_EXTRA                                                     \
@@ -61,7 +63,6 @@
 #define IM_VEC4_CLASS_EXTRA                                                                    \
         template <typename T> ImVec4(const vec4<T>& f) { x = f.x; y = f.y; z = f.z; w = f.w; } \
         template <typename T> operator vec4<T>() const { return vec4<T>(x,y,z,w); }
-
 
 //---- Use 32-bit vertex indices (default is 16-bit) to allow meshes with more than 64K vertices. Render function needs to support it.
 //#define ImDrawIdx unsigned int

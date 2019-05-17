@@ -229,6 +229,7 @@ OUTPUT_FILE_EXT = $(OUTPUT_FILE)$(extension_exe) # Output filename with extensio
 OBJECT_DIR := obj
 CFLAGS := -std=c11 -Wall -Wextra -pedantic-errors -g
 CXXFLAGS := -std=c++17 -Wall -Wextra -pedantic-errors -g
+WINDRES_FLAGS := -O res
 LDFLAGS :=
 LINKER_MODE := CXX # C or CXX
 ALLOW_PCH := 1 # 0 or 1
@@ -379,17 +380,17 @@ build: __check_mode __mode_$(current_mode)
 # Public: clean everything.
 .PHONY: clean
 clean: __no_mode_needed
-	$(info [Cleaning] <everything>)
+	@$(call echo,[Cleaning] <everything>)
 	@$(call rmdir,$(common_object_dir))
 	@$(call rmfile,$(OUTPUT_FILE_EXT))
-	$(info [Done])
+	@$(call echo,[Done])
 
 # Public: clean files for the current build mode, not including the executable.
 .PHONY: clean_mode
 clean_mode: __check_mode
-	$(info [Cleaning] $(current_mode))
+	@$(call echo,[Cleaning] $(current_mode))
 	@$(call rmdir,$(OBJECT_DIR))
-	$(info [Done])
+	@$(call echo,[Done])
 
 # Internal: Generic build. This is used by `__mode_*` targets.
 .PHONY: __generic_build
@@ -398,11 +399,11 @@ __generic_build: $(OUTPUT_FILE_EXT)
 # Internal: Actually build the executable.
 # Note that object files come before linker flags.
 $(OUTPUT_FILE_EXT): $(objects)
-	$(info [Linking] $(OUTPUT_FILE_EXT))
+	@$(call echo,[Linking] $(OUTPUT_FILE_EXT))
 	@$($(LINKER_MODE)_LINKER) $(objects) $(LDFLAGS) -o $@
-	$(if $(POST_BUILD_COMMANDS),$(info [Finishing]))
+	@$(if $(POST_BUILD_COMMANDS),$(call echo,[Finishing]))
 	$(POST_BUILD_COMMANDS)
-	$(info [Done])
+	@$(call echo,[Done])
 
 # Make sure the executable is rebuilt correctly if build mode changes.
 ifneq ($(strip $(mode_changed)),)
@@ -417,20 +418,20 @@ endif
 # Note that flags come before the files. Note that file-specific flags aren't passed to `add_pch_to_flags`, to prevent removal of `-include` from them.
 # * C sources
 $(OBJECT_DIR)/%.c.o: %.c
-	$(info [C] $<)
+	@$(call echo,[C] $<)
 	@$(strip $(C_COMPILER) -MMD -MP $(call add_pch_to_flags,$(CFLAGS),$(filter %.gch,$^)) $(file_local_flags) $< -c -o $@)
 # * C++ sources
 $(OBJECT_DIR)/%.cpp.o: %.cpp
-	$(info [C++] $<)
+	@$(call echo,[C++] $<)
 	@$(strip $(CXX_COMPILER) -MMD -MP $(call add_pch_to_flags,$(CXXFLAGS),$(filter %.gch,$^)) $(file_local_flags) $< -c -o $@)
 ifeq ($(strip $(ALLOW_PCH)),1)
 # * C precompiled headers
 $(OBJECT_DIR)/%.h.gch: %.h
-	$(info [C header] $<)
+	@$(call echo,[C header] $<)
 	@$(strip $(C_COMPILER) -MMD -MP $(CFLAGS) $(file_local_flags) $< -c -o $@)
 # * C++ precompiled headers
 $(OBJECT_DIR)/%.hpp.gch: %.hpp
-	$(info [C++ header] $<)
+	@$(call echo,[C++ header] $<)
 	@$(strip $(CXX_COMPILER) -MMD -MP $(CXXFLAGS) $(file_local_flags) $< -c -o $@)
 else
 # * C precompiled headers (skip)
@@ -442,7 +443,7 @@ $(OBJECT_DIR)/%.hpp.gch: %.hpp
 endif
 # * Windows resources
 $(OBJECT_DIR)/%.rc.o: %.rc
-	$(info [Resource] $<)
+	@$(call echo,[Resource] $<)
 	@$(WINDRES) $(WINDRES_FLAGS) -i $< -o $@
 
 # Helpers for generating compile_commands.json
@@ -453,7 +454,7 @@ override EXCLUDE_FILES += $(foreach d,$(EXCLUDE_DIRS), $(call rwildcard,$d,*.c *
 override include_files = $(filter-out $(EXCLUDE_FILES), $(SOURCES))
 override get_file_headers = $(foreach x,$(PRECOMPILED_HEADERS),$(if $(filter $(subst *,%,$(subst |, ,$(word 1,$(subst >, ,$x)))),$1),-include $(word 2,$(subst >, ,$x))))
 override get_file_local_flags = $(foreach x,$(subst |, ,$(subst $(space),<,$(FILE_SPECIFIC_FLAGS))),$(if $(filter $(subst *,%,$(subst <, ,$(word 1,$(subst >, ,$x)))),$1),$(subst <, ,$(word 2,$(subst >, ,$x)))))
-override file_command = && $(call echo,{"directory": "."$(comma) "file": "$(cur_dir)/$3"$(comma) "command": "$(strip $1 $2 $(call get_file_headers,$3) $3)"}$(comma)) >>compile_commands.json
+override file_command = && $(call echo,{"directory": "$(cur_dir)"$(comma) "file": "$(cur_dir)/$3"$(comma) "command": "$(strip $1 $2 $(call get_file_headers,$3) $3)"}$(comma)) >>compile_commands.json
 override all_commands = $(foreach f,$(filter %.c,$(include_files)),$(call file_command,$(C_COMPILER),$(CFLAGS) $(call get_file_local_flags,$3),$f)) \
 						$(foreach f,$(filter %.cpp,$(include_files)),$(call file_command,$(CXX_COMPILER),$(CXXFLAGS) $(call get_file_local_flags,$3),$f))
 override all_stub_commands = $(foreach file,$(EXCLUDE_FILES),$(call file_command,,,$(file)))
@@ -462,17 +463,17 @@ override all_stub_commands = $(foreach file,$(EXCLUDE_FILES),$(call file_command
 #   Target-specific
 .PHONY: commands
 commands: __no_mode_needed
-	$(info [Generating] compile_commands.json)
+	@$(call echo,[Generating] compile_commands.json)
 	@$(call echo,[) >compile_commands.json $(all_commands) && $(call echo,]) >>compile_commands.json
-	$(info [Done])
+	@$(call echo,[Done])
 
 # Public: same as `commands`, but `compile_commands.json` will contain invalid commands for `EXCLUDE_FILES` and all files from `EXCLUDE_DIRS`.
 #   This helps to get rid on unwanted warnings in files not under your control when using clangd, by disabling clangd on those excluded files.
 .PHONY: commands_fixed
 commands_fixed: __no_mode_needed
-	$(info [Generating] compile_commands.json (fixed))
+	@$(call echo,[Generating] compile_commands.json (fixed))
 	@$(call echo,[) >compile_commands.json $(all_commands) $(all_stub_commands) && $(call echo,]) >>compile_commands.json
-	$(info [Done])
+	@$(call echo,[Done])
 
 # Public: `remove compile_commands.json`.
 .PHONY: clean_commands

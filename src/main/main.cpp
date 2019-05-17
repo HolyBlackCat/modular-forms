@@ -7,6 +7,7 @@
 #include "main/visual_options.h"
 
 Interface::Window window;
+Interface::ImGuiController gui_controller;
 Input::Mouse mouse;
 
 struct State
@@ -50,7 +51,7 @@ struct StateMain : State
         try
         {
             Json json(MemoryFile(file_name).string(), 64);
-            proc = Data::ReflectedObjectFromJson<Procedure>(json);
+            proc = Data::ReflectedObjectFromJson<Procedure>(json.GetView());
 
             if (proc.name.find_first_of("\n") != std::string::npos)
                 Program::Error("Line feeds are not allowed in procedure names.");
@@ -298,48 +299,33 @@ int main()
 
     Graphics::SetClearColor(fvec3(1));
 
-    Poly::Storage<State> state = Poly::make_derived<StateMain>;
+    Poly::Storage<State> state = Poly::derived<StateMain>;
 
     while (1)
     {
-        bool imgui_frame_started = 0;
-        while (metronome.Tick(delta_timer()))
+        uint64_t last_frame_len = delta_timer();
+        while (metronome.Tick(last_frame_len))
         {
-            window.ProcessEvents([](const SDL_Event &event)
-            {
-                ImGui_ImplSDL2_ProcessEvent(&event);
-            });
+            window.ProcessEvents({gui_controller.EventHook(Interface::ImGuiController::pass_events)});
 
             if (window.Resized())
                 Graphics::Viewport(window.Size());
             if (window.ExitRequested())
                 state->exit_requested = 1;
 
-            if (imgui_frame_started)
-                ImGui::EndFrame();
-
-            ImGui_ImplOpenGL2_NewFrame();
-            ImGui_ImplSDL2_NewFrame(window.Handle());
-            ImGui::NewFrame();
-            imgui_frame_started = 1;
-
+            gui_controller.PreTick();
             state->Tick();
         }
 
-        if (imgui_frame_started)
-            ImGui::Render();
-
+        gui_controller.PreRender();
         Graphics::Clear();
-
-        if (window.Ticks() > 1)
-            ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+        gui_controller.PostRender();
+        window.SwapBuffers();
 
         uint64_t delta = Clock::Time() - delta_timer.LastTimePoint();
         double delta_secs = Clock::TicksToSeconds(delta);
         uint64_t target_delta_secs = 1.0 / metronome.Frequency();
         if (target_delta_secs > delta_secs)
-            Clock::WaitSeconds((target_delta_secs - delta_secs) * 0.75);
-
-        window.SwapBuffers();
+            Clock::WaitSeconds(target_delta_secs - delta_secs);
     }
 }

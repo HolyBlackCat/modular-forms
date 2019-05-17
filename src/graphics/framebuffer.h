@@ -72,7 +72,7 @@ namespace Graphics
         }
 
         FrameBuffer(FrameBuffer &&other) noexcept : data(std::exchange(other.data, {})) {}
-        FrameBuffer &operator=(FrameBuffer &&other) noexcept
+        FrameBuffer &operator=(FrameBuffer other) noexcept
         {
             std::swap(data, other.data);
             return *this;
@@ -82,7 +82,8 @@ namespace Graphics
         {
             if (Bound())
                 binding = 0; // Deleting a framebuffer unbinds it. We just need to adjust the saved binding.
-            glDeleteFramebuffers(1, &data.handle); // Deleting 0 is a no-op.
+            if (data.handle)
+                glDeleteFramebuffers(1, &data.handle); // Deleting 0 is a no-op, but GL could be unloaded at this point.
         }
 
         explicit operator bool() const

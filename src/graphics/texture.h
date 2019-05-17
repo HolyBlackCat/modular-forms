@@ -52,7 +52,7 @@ namespace Graphics
         }
 
         TexObject(TexObject &&other) noexcept : data(std::exchange(other.data, {})) {}
-        TexObject &operator=(TexObject &&other) noexcept
+        TexObject &operator=(TexObject other) noexcept
         {
             std::swap(data, other.data);
             return *this;
@@ -61,7 +61,8 @@ namespace Graphics
         ~TexObject()
         {
             // Deleting a texture unbinds it.
-            glDeleteTextures(1, &data.handle); // Deleting 0 is a no-op.
+            if (data.handle)
+                glDeleteTextures(1, &data.handle); // Deleting 0 is a no-op, but GL could be unloaded at this point.
         }
 
         explicit operator bool() const
@@ -79,7 +80,7 @@ namespace Graphics
     {
         using res_alloc_t = ResourceAllocator<int>;
 
-        static res_alloc_t &Allocator() // Not sure if it's necessary, but the intent of wrapping it into a function is prevent the static init order fiasco.
+        static res_alloc_t &Allocator() // Wrapped into a function to prevent the static init order fiasco.
         {
             static res_alloc_t ret(64);
             return ret;
@@ -87,7 +88,7 @@ namespace Graphics
 
         struct Data
         {
-            int index = res_alloc_t::none;
+            int index = -1;
             GLuint handle = 0;
         };
 
@@ -104,9 +105,9 @@ namespace Graphics
 
         TexUnit()
         {
-            data.index = Allocator().Alloc();
-            if (!*this)
+            if (Allocator().RemainingCapacity() == 0)
                 Program::Error("No free texture units.");
+            data.index = Allocator().Allocate();
         }
         explicit TexUnit(GLuint handle) : TexUnit()
         {
@@ -118,7 +119,7 @@ namespace Graphics
         }
 
         TexUnit(TexUnit &&other) noexcept : data(std::exchange(other.data, {})) {}
-        TexUnit &operator=(TexUnit &&other) noexcept
+        TexUnit &operator=(TexUnit other) noexcept
         {
             std::swap(data, other.data);
             return *this;
@@ -126,12 +127,13 @@ namespace Graphics
 
         ~TexUnit()
         {
-            Allocator().Free(data.index); // Freeing an invalid index is a no-op.
+            if (*this)
+                Allocator().Free(data.index);
         }
 
         explicit operator bool() const
         {
-            return data.index != res_alloc_t::none;
+            return data.index != -1;
         }
 
         int Index() const
