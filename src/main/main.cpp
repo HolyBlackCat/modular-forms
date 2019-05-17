@@ -267,8 +267,10 @@ int main()
         }
 
         { // GUI
+            auto config = Interface::ImGuiController::Config{} with (store_state_in_file = "");
+            gui_controller = Interface::ImGuiController(Poly::derived<Interface::ImGuiController::GraphicsBackend_FixedFunction>, config);
+
             IMGUI_CHECKVERSION();
-            ImGui::CreateContext();
             ImGuiIO& io = ImGui::GetIO();
             io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
