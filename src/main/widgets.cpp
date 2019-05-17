@@ -1,7 +1,6 @@
 #include "main/data.h"
 
-#include "main/visual_options.h"
-#include "main/image_viewer.h"
+#include "main/options.h"
 
 namespace Widgets
 {
@@ -63,7 +62,7 @@ namespace Widgets
 
         int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the button width on the first `Display()` call. Otherwise it stays at 0.
 
-        void Init() override
+        void Init(const Data::Procedure &) override
         {
             if (buttons.size() == 0)
                 Program::Error("A button list must contain at least one button.");
@@ -106,7 +105,7 @@ namespace Widgets
 
                     if (button.tooltip && ImGui::IsItemHovered())
                     {
-                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(VisualOptions::tooltip_padding));
+                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(Options::Visual::tooltip_padding));
                         ImGui::BeginTooltip();
                         ImGui::TextUnformatted(button.tooltip->c_str());
                         ImGui::EndTooltip();
@@ -146,7 +145,7 @@ namespace Widgets
 
         int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the column width on the first `Display()` call. Otherwise it stays at 0.
 
-        void Init() override
+        void Init(const Data::Procedure &) override
         {
             if (checkboxes.size() == 0)
                 Program::Error("A checkbox list must contain at least one checkbox.");
@@ -188,7 +187,7 @@ namespace Widgets
 
                     if (checkbox.tooltip && ImGui::IsItemHovered())
                     {
-                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(VisualOptions::tooltip_padding));
+                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(Options::Visual::tooltip_padding));
                         ImGui::BeginTooltip();
                         ImGui::TextUnformatted(checkbox.tooltip->c_str());
                         ImGui::EndTooltip();
@@ -223,7 +222,7 @@ namespace Widgets
 
         int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the column width on the first `Display()` call. Otherwise it stays at 0.
 
-        void Init() override
+        void Init(const Data::Procedure &) override
         {
             if (radiobuttons.size() == 0)
                 Program::Error("A checkbox list must contain at least one checkbox.");
@@ -268,7 +267,7 @@ namespace Widgets
 
                     if (radiobutton.tooltip && ImGui::IsItemHovered())
                     {
-                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(VisualOptions::tooltip_padding));
+                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(Options::Visual::tooltip_padding));
                         ImGui::BeginTooltip();
                         ImGui::TextUnformatted(radiobutton.tooltip->c_str());
                         ImGui::EndTooltip();
@@ -302,7 +301,7 @@ namespace Widgets
         // It's probably possible to somehow directly plug `std::string` in there, but I don't want to bother.
         std::vector<char> value_vec;
 
-        void Init() override
+        void Init(const Data::Procedure &) override
         {
             if (max_bytes < 2)
                 Program::Error("Max amount of bytes for a text input box has to be at least 2.");
@@ -357,13 +356,13 @@ namespace Widgets
             (int)(columns)(=1),
         )
 
-        void Init() override
+        void Init(const Data::Procedure &proc) override
         {
             if (images.size() == 0)
                 Program::Error("An image list must contain at least one image.");
 
             for (auto &image : images)
-                image.data = Data::Image::Load(image.file_name);
+                image.data = Data::Image::Load(proc.base_dir + image.file_name);
         }
 
         void Display(int index) override
@@ -402,13 +401,15 @@ namespace Widgets
                     fvec2 coord_a = (1 / image_size_relative_to_button - 1) / -2;
                     fvec2 coord_b = 1 - coord_a;
 
-                    ImGui::PushID(index);
+                    ImGui::PushID(index); // We push this here rather than outside of the loop because we don't want it to affect modal window if we're going to open it.
+                    ImGui::PushID(elem_index);
                     bool button_pressed = ImGui::ImageButton(image.data->TextureHandle(), max_size, coord_a, coord_b, padding);
+                    ImGui::PopID();
                     ImGui::PopID();
 
                     if (image.tooltip && ImGui::IsItemHovered())
                     {
-                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(VisualOptions::tooltip_padding));
+                        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(Options::Visual::tooltip_padding));
                         ImGui::BeginTooltip();
                         ImGui::TextUnformatted(image.tooltip->c_str());
                         ImGui::EndTooltip();
@@ -417,8 +418,7 @@ namespace Widgets
 
                     if (button_pressed)
                     {
-                        ImGui::OpenPopup(GuiElements::ImageViewer::modal_name);
-                        Data::last_clicked_image = &*image.data;
+                        Data::clicked_image = &*image.data;
                     }
 
                     elem_index++;

@@ -1,12 +1,15 @@
 #pragma once
 
+#include "main/data.h"
 #include "utils/mat.h"
 
 namespace GuiElements
 {
     class ImageViewer
     {
+        static constexpr const char *modal_name = "image_view_modal";
         bool modal_open = 0;
+        const Data::Image *current_image = 0;
         float scale_power = 0;
         fvec2 offset = fvec2(0);
         float scale = 1;
@@ -16,7 +19,5 @@ namespace GuiElements
 
       public:
         void Display();
-
-        inline static constexpr const char *modal_name = "image_view_modal";
     };
 }

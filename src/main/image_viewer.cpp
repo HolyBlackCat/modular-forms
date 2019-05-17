@@ -2,20 +2,26 @@
 
 #include "main/common.h"
 #include "main/data.h"
-#include "main/visual_options.h"
+#include "main/options.h"
 
 void GuiElements::ImageViewer::Display()
 {
+    if (Data::clicked_image)
+    {
+        current_image = std::exchange(Data::clicked_image, nullptr);
+        ImGui::OpenPopup(modal_name);
+    }
+
     if (ImGui::IsPopupOpen(modal_name))
     {
-        ImGui::SetNextWindowPos(ivec2(VisualOptions::image_preview_outer_margin));
-        ImGui::SetNextWindowSize(ivec2(window.Size() - 2 * VisualOptions::image_preview_outer_margin));
+        ImGui::SetNextWindowPos(ivec2(Options::Visual::image_preview_outer_margin));
+        ImGui::SetNextWindowSize(ivec2(window.Size() - 2 * Options::Visual::image_preview_outer_margin));
 
-        if (ImGui::BeginPopupModal(modal_name, 0, VisualOptions::modal_window_flags))
+        if (ImGui::BeginPopupModal(modal_name, 0, Options::Visual::modal_window_flags))
         {
             const std::string text_close = "Закрыть";
 
-            const auto &image = *Data::last_clicked_image;
+            const auto &image = *current_image;
             ivec2 available_size = iround(fvec2(ImGui::GetContentRegionAvail())).sub_y(ImGui::GetFrameHeightWithSpacing() + 2);
 
             fvec2 relative_image_size = image.pixel_size / fvec2(available_size);
@@ -38,8 +44,11 @@ void GuiElements::ImageViewer::Display()
             scale = pow(2, scale_power);
 
             ImGui::PushItemWidth(round(ImGui::GetWindowContentRegionWidth() / 3));
+            ImGui::PushAllowKeyboardFocus(false);
             ImGui::SliderFloat("Масштаб", &scale_power, min_scale_power, max_scale_power, Str(iround(scale * 100), "%%").c_str());
+            ImGui::PopAllowKeyboardFocus();
             ImGui::PopItemWidth();
+            scale_power += (mouse.wheel_up.pressed() - mouse.wheel_down.pressed()) * 0.25;
             clamp_var(scale_power, min_scale_power, max_scale_power);
 
             ImGui::SameLine();

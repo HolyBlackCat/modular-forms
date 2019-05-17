@@ -51,6 +51,6 @@ namespace GuiElements
         void Display();
 
         bool is_done = 0; // This is set to `true` when a file is selected and the modal is closed.
-        std::string result_filename;
+        fs::path result;
     };
 }

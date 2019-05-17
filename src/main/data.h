@@ -38,6 +38,8 @@ namespace Data // Strings
 
 namespace Data // Widget system and JSON serialization
 {
+    struct Procedure;
+
     struct WidgetBase_Low
     {
         WidgetBase_Low() = default;
@@ -46,7 +48,7 @@ namespace Data // Widget system and JSON serialization
         WidgetBase_Low &operator=(const WidgetBase_Low &) = default;
         WidgetBase_Low &operator=(WidgetBase_Low &&) = default;
 
-        virtual void Init() {};
+        virtual void Init(const Procedure &) {};
         virtual void Display(int index) = 0;
         virtual ~WidgetBase_Low() = default;
     };
@@ -143,7 +145,6 @@ namespace Data // Widget system and JSON serialization
         {
             T ret = widget_type_manager().MakeWidget(view["type"].GetString());
             ret.dynamic().from_json(ret, view, "data");
-            ret->Init();
             return ret;
         }
         else if constexpr (Refl::is_reflected<T>)
@@ -191,6 +192,45 @@ namespace Data // Widget system and JSON serialization
         else
         {
             static_assert(Meta::value<false, T>, "This type is not supported.");
+        }
+    }
+
+    template <typename T> void InitializeWidgetsRecursively(T &object, const Procedure &proc)
+    {
+        if constexpr (std::is_same_v<T, Widget>)
+        {
+            object->Init(proc);
+        }
+        else if constexpr (Refl::is_reflected<T>)
+        {
+            using refl_t = Refl::Interface<T>;
+            auto refl = Refl::Interface(object);
+
+            if constexpr (refl_t::is_structure)
+            {
+                refl.for_each_field([&](auto index)
+                {
+                    constexpr int i = index.value;
+                    using field_type = typename refl_t::template field_type<i>;
+                    auto &field_ref = refl.template field_value<i>();
+                    if constexpr (!is_std_optional<field_type>::value)
+                    {
+                        InitializeWidgetsRecursively(field_ref, proc);
+                    }
+                    else
+                    {
+                        if (field_ref)
+                            InitializeWidgetsRecursively(*field_ref, proc);
+                    }
+                });
+            }
+            else if constexpr (refl_t::is_container)
+            {
+                refl.for_each_element([&](auto it)
+                {
+                    InitializeWidgetsRecursively(*it, proc);
+                });
+            }
         }
     }
 
@@ -497,5 +537,27 @@ namespace Data // Images
     };
 
     [[maybe_unused]] // Clang is silly.
-    inline const Image *last_clicked_image = 0;
+    inline const Image *clicked_image = 0;
+}
+
+namespace Data // Procedure data structure
+{
+    ReflectStruct(ProcedureStep,(
+        (std::string)(name),
+        (std::optional<bool>)(confirm),
+        (std::vector<Data::Widget>)(widgets),
+    ))
+
+    struct Procedure
+    {
+        Reflect(Procedure)
+        (
+            (std::string)(name),
+            (int)(current_step_index)(=0),
+            (std::optional<bool>)(confirm_exit),
+            (std::vector<ProcedureStep>)(steps),
+        )
+
+        std::string base_dir;
+    };
 }

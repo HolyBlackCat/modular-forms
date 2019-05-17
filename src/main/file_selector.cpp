@@ -2,7 +2,7 @@
 
 #include "main/data.h"
 #include "main/common.h"
-#include "main/visual_options.h"
+#include "main/options.h"
 
 GuiElements::FileSelector::FileSelector()
 {
@@ -118,10 +118,10 @@ void GuiElements::FileSelector::Display()
 
     if (ImGui::IsPopupOpen(modal_name))
     {
-        ImGui::SetNextWindowPos(ivec2(VisualOptions::image_preview_outer_margin));
-        ImGui::SetNextWindowSize(ivec2(window.Size() - 2 * VisualOptions::image_preview_outer_margin));
+        ImGui::SetNextWindowPos(ivec2(Options::Visual::image_preview_outer_margin));
+        ImGui::SetNextWindowSize(ivec2(window.Size() - 2 * Options::Visual::image_preview_outer_margin));
 
-        if (ImGui::BeginPopupModal(modal_name, 0, VisualOptions::modal_window_flags))
+        if (ImGui::BeginPopupModal(modal_name, 0, Options::Visual::modal_window_flags))
         {
             if (!modal_open)
             {
@@ -230,7 +230,7 @@ void GuiElements::FileSelector::Display()
                         {
                             ImGui::CloseCurrentPopup();
                             is_done = 1;
-                            result_filename = fs::weakly_canonical(it.path).string();
+                            result = fs::weakly_canonical(it.path);
                         }
                     }
                 }
@@ -250,7 +250,7 @@ void GuiElements::FileSelector::Display()
             {
                 ImGui::CloseCurrentPopup();
                 is_done = 1;
-                result_filename = fs::weakly_canonical(state.current_path / state.open_string).string();
+                result = fs::weakly_canonical(state.current_path / state.open_string);
             }
 
             ImGui::EndPopup();
