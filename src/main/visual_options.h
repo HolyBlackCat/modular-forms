@@ -20,9 +20,9 @@ namespace VisualOptions
     {
         ImGui::StyleColorsLight();
 
-        style.WindowPadding     = fvec2(10,10);
+        style.WindowPadding     = fvec2(8,8);
         style.FramePadding      = fvec2(12,3);
-        style.ItemSpacing       = fvec2(16,6);
+        style.ItemSpacing       = fvec2(10,6);
         style.ItemInnerSpacing  = fvec2(6,4);
         style.TouchExtraPadding = fvec2(0,0);
         style.IndentSpacing     = 26;

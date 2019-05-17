@@ -64,7 +64,15 @@ void GuiElements::FileSelector::SetNewPath(fs::path new_path)
         {
             for (auto &elem : fs::directory_iterator(state.current_path, fs::directory_options::skip_permission_denied | fs::directory_options::follow_directory_symlink))
             {
-                state.directory_contents.push_back({elem.path().lexically_relative(state.current_path), elem.is_directory()});
+                std::string path_string = elem.path().string();
+                auto path_ends_with_suffix = [&](const std::string &suffix)
+                {
+                    return Strings::EndsWith(path_string, suffix);
+                };
+
+                bool allow = elem.is_directory() || allowed_suffixes.empty() || std::any_of(allowed_suffixes.begin(), allowed_suffixes.end(), path_ends_with_suffix);
+                if (allow)
+                    state.directory_contents.push_back({elem.path().lexically_relative(state.current_path), elem.is_directory()});
             }
 
             std::sort(state.directory_contents.begin(), state.directory_contents.end(), [](const DirElement &a, const DirElement &b)
@@ -74,6 +82,16 @@ void GuiElements::FileSelector::SetNewPath(fs::path new_path)
                 return a.name < b.name;
             });
         }
+
+        // Reset selected entry.
+        state.selected_entry = -1;
+
+        // Reset file name.
+        state.open_string = {};
+        state.open_string_version++;
+
+        // Reset done flag.
+        is_done = 0;
     }
     catch (std::exception &e)
     {
@@ -81,9 +99,13 @@ void GuiElements::FileSelector::SetNewPath(fs::path new_path)
     }
 }
 
-void GuiElements::FileSelector::Open()
+void GuiElements::FileSelector::Open(Mode new_mode, std::vector<std::string> new_allowed_suffixes)
 {
+    mode = new_mode;
+    allowed_suffixes = std::move(new_allowed_suffixes);
     should_open = 1;
+
+    SetNewPath(state.current_path); // This updates directory contents with respect to the specified suffixes.
 }
 
 void GuiElements::FileSelector::Display()
@@ -107,66 +129,129 @@ void GuiElements::FileSelector::Display()
                 // Initialize stuff.
             }
 
+            std::string title;
+            switch (mode)
+            {
+              case Mode::save_as:
+                title = "Сохранить как...";
+                break;
+              case Mode::open:
+                title = "Открыть";
+                break;
+            }
+
+            const std::string text_close = "Отмена", text_done = (mode == Mode::open ? "Открыть" : "Сохранить");
+            int close_button_width = ImGui::CalcTextSize(text_close.c_str()).x + ImGui::GetStyle().FramePadding.x * 2;
+            int done_button_width = ImGui::CalcTextSize(text_done.c_str()).x + ImGui::GetStyle().FramePadding.x * 2;
+
+            ImGui::TextUnformatted(title.c_str());
+
+            ImGui::SameLine();
+
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - close_button_width);
+            if (ImGui::Button(text_close.c_str()) || Input::Button(Input::escape).pressed())
+            {
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::Separator();
+
+            ivec2 path_area_size = ivec2(ImGui::GetContentRegionAvail().x, ImGui::GetFrameHeightWithSpacing());
+
+            ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 10);
+            ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarRounding, 0);
+            ImGui::BeginChild("path_area", path_area_size, false, ImGuiWindowFlags_HorizontalScrollbar);
+
             if (state.current_path.empty())
                 ImGui::TextDisabled("%s", "Диски");
             else
                 ImGui::TextUnformatted(state.current_path.string().c_str());
+            ImGui::EndChild();
+            ImGui::PopStyleVar(2);
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 6);
 
-            ImGui::BeginChildFrame(ImGui::GetID("hello"), ImGui::GetContentRegionAvail());
+            ImGui::BeginChildFrame(ImGui::GetID(state.current_path.string().c_str()), ivec2(ImGui::GetContentRegionAvail()) with (y -= ImGui::GetFrameHeightWithSpacing()));
 
-            if (state.directory_contents.empty())
+            bool in_root_dir = state.current_path.relative_path().empty();
+            bool show_double_dot = !state.current_path.empty();
+
+            NotOnPlatform(WINDOWS)
+            (
+                if (in_root_dir)
+                    show_double_dot = 0;
+            )
+
+            if (show_double_dot)
             {
-                if (state.is_invalid)
-                    ImGui::TextDisabled("%s", "Невозможно открыть.");
-            }
-            else
-            {
-                bool in_root_dir = state.current_path.relative_path().empty();
-
-                bool show_double_dot = !state.current_path.empty();
-
-                NotOnPlatform(WINDOWS)
-                (
-                    if (in_root_dir)
-                        show_double_dot = 0;
-                )
-
-                if (show_double_dot)
+                if (ImGui::Selectable("..", state.selected_entry == int(state.directory_contents.size()), ImGuiSelectableFlags_AllowDoubleClick))
                 {
-                    if (ImGui::Selectable("..###back"))
+                    state.selected_entry = state.directory_contents.size();
+
+                    if (ImGui::IsMouseDoubleClicked(0))
                     {
                         if (in_root_dir)
                             SetNewPath(fs::path{});
                         else
                             SetNewPath(state.current_path / "..");
                     }
-                    ImGui::Separator();
                 }
 
-                bool last_entry_was_dir = 0;
+                if (state.directory_contents.size() > 0 || state.is_invalid)
+                    ImGui::Separator();
+            }
 
-                int elem_index = 0;
-                for (const auto &it : state.directory_contents)
+            bool last_entry_was_dir = 0;
+
+            int elem_index = 0;
+            for (const auto &it : state.directory_contents)
+            {
+                if (!it.is_directory && last_entry_was_dir)
+                    ImGui::Separator();
+                last_entry_was_dir = it.is_directory;
+
+                bool is_selected = elem_index == state.selected_entry;
+                if (ImGui::Selectable(Str(Data::EscapeStringForWidgetName(it.name), "###", elem_index).c_str(), is_selected, ImGuiSelectableFlags_AllowDoubleClick))
                 {
-                    NotOnPlatform(WINDOWS)
-                    (
-                        if (it.is_dotdot)
-                            continue;
-                    )
+                    state.selected_entry = elem_index;
 
-                    if (!it.is_directory && last_entry_was_dir)
-                        ImGui::Separator();
-                    last_entry_was_dir = it.is_directory;
-
-                    if (ImGui::Selectable(Str(Data::EscapeStringForWidgetName(it.name), "###", elem_index++).c_str()) && it.is_directory)
+                    if (!it.is_directory)
                     {
-                        SetNewPath(state.current_path / it.path);
+                        state.open_string = it.name;
+                        state.open_string_version++;
+                    }
+
+                    if (ImGui::IsMouseDoubleClicked(0))
+                    {
+                        if (it.is_directory)
+                        {
+                            SetNewPath(state.current_path / it.path);
+                        }
+                        else
+                        {
+                            ImGui::CloseCurrentPopup();
+                            is_done = 1;
+                            result_filename = fs::weakly_canonical(it.path).string();
+                        }
                     }
                 }
+
+                elem_index++;
             }
+
+            if (state.is_invalid)
+                ImGui::TextDisabled("%s", "Невозможно открыть.");
 
             ImGui::EndChildFrame();
 
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - done_button_width - ImGui::GetStyle().ItemSpacing.x);
+            ImGui::InputTextWithHint(Str("###open_string:", state.open_string_version).c_str(), "Имя файла", &state.open_string);
+            ImGui::SameLine();
+            if (ImGui::Button(text_done.c_str()))
+            {
+                ImGui::CloseCurrentPopup();
+                is_done = 1;
+                result_filename = fs::weakly_canonical(state.current_path / state.open_string).string();
+            }
 
             ImGui::EndPopup();
         }

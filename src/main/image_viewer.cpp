@@ -44,7 +44,7 @@ void GuiElements::ImageViewer::Display()
 
             ImGui::SameLine();
             int close_button_width = ImGui::CalcTextSize(text_close.c_str()).x + ImGui::GetStyle().FramePadding.x * 2;
-            ImGui::SetCursorPosX(ImGui::GetWindowContentRegionWidth() - close_button_width);
+            ImGui::SetCursorPosX(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x - close_button_width);
             if (ImGui::Button(text_close.c_str()) || Input::Button(Input::escape).pressed())
             {
                 ImGui::CloseCurrentPopup();

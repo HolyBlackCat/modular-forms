@@ -3,7 +3,7 @@
     "confirm_exit" : false,
     "steps" : [
         {
-            "name" : "Название шага 1",
+            "name" : "Альфа",
             "confirm" : true,
             "widgets" : [
                 {
@@ -148,7 +148,7 @@
             ],
         },
         {
-            "name" : "Название шага 2",
+            "name" : "Бета",
             "widgets" : [
                 {
                     "type" : "text",
@@ -157,7 +157,7 @@
             ],
         },
         {
-            "name" : "Название шага 3",
+            "name" : "Гамма",
             "widgets" : [
                 {
                     "type" : "text",

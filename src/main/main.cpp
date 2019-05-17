@@ -101,7 +101,7 @@ struct StateMain : State
                 if (ImGui::BeginMenu("Файл"))
                 {
                     if (ImGui::MenuItem("Открыть"))
-                        file_selector.Open();
+                        file_selector.Open(GuiElements::FileSelector::Mode::open, {".json"});
 
                     if (ImGui::MenuItem("Выйти"))
                         exit_requested = 1;
@@ -122,7 +122,7 @@ struct StateMain : State
             for (const ProcedureStep &step : proc.steps)
                 clamp_var_min(list_column_width, ImGui::CalcTextSize(step.name.c_str()).x);
 
-            list_column_width += ImGui::GetStyle().ScrollbarSize + ImGui::GetStyle().ItemSpacing.x * 2;
+            list_column_width += ImGui::GetStyle().ScrollbarSize + ImGui::GetStyle().ItemSpacing.x * 2 + ImGui::GetStyle().WindowPadding.x * 2;
 
             ImGui::SetColumnWidth(-1, list_column_width);
         }
@@ -134,7 +134,9 @@ struct StateMain : State
             ImGui::SetColumnWidth(-1, max_list_column_width);
 
         { // Step list
-            ImGui::BeginChild("step_list");
+            ImGui::TextDisabled("%s", "Шаги");
+
+            ImGui::BeginChildFrame(ImGui::GetID("step_list"), ImGui::GetContentRegionAvail());
 
             std::size_t cur_step = current_step_index - (current_step_index > 0 ? first_tick_at_this_step : 0); // We use this rather than `current_step_index` to prevent jitter of the list when changing steps.
 
@@ -145,7 +147,7 @@ struct StateMain : State
                     ImGui::SetScrollHereY(0.75);
             }
 
-            ImGui::EndChild();
+            ImGui::EndChildFrame();
         }
 
         ImGui::NextColumn();
@@ -153,7 +155,7 @@ struct StateMain : State
         ImGui::TextUnformatted(current_step.name.c_str());
 
         int bottom_panel_h = ImGui::GetFrameHeightWithSpacing(); // ImGui console example suggests this.
-        ImGui::BeginChild(Str("widgets:", current_step_index).c_str(), fvec2(0, -bottom_panel_h), 1);
+        ImGui::BeginChildFrame(ImGui::GetID(Str("widgets:", current_step_index).c_str()), fvec2(0, -bottom_panel_h), 1);
 
         int widget_index = 0;
         for (Data::Widget &widget : current_step.widgets)
@@ -168,7 +170,7 @@ struct StateMain : State
         image_viewer.Display();
         file_selector.Display();
 
-        ImGui::EndChild();
+        ImGui::EndChildFrame();
 
         bool finishing_step_at_this_tick = 0;
 
@@ -199,7 +201,7 @@ struct StateMain : State
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("Отмена"))
+                if (ImGui::Button("Отмена") || Input::Button(Input::escape).pressed())
                 {
                     ImGui::CloseCurrentPopup();
                 }
@@ -210,7 +212,8 @@ struct StateMain : State
         { // Exit modal
             auto Exit = [&]
             {
-                Data::ReflectedObjectToJsonFile(proc, current_file_name);
+                // Data::ReflectedObjectToJsonFile(proc, current_file_name);
+                new (&gui_controller) Interface::ImGuiController; // The destructor is glitchy, disabling it.
                 Program::Exit();
             };
 
@@ -233,7 +236,7 @@ struct StateMain : State
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("Отмена"))
+                if (ImGui::Button("Отмена") || Input::Button(Input::escape).pressed())
                 {
                     ImGui::CloseCurrentPopup();
                 }
@@ -258,7 +261,7 @@ int main()
             ivec2 window_size(800, 600);
 
             Interface::WindowSettings window_settings;
-            window_settings.min_size = window_size;
+            window_settings.min_size = window_size / 2;
             window_settings.gl_major = 2;
             window_settings.gl_minor = 1;
             window_settings.gl_profile = Interface::Profile::any;

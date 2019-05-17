@@ -42,9 +42,7 @@ namespace Widgets
         void Display(int index) override
         {
             (void)index;
-            ImGui::Spacing();
             ImGui::Separator();
-            ImGui::Spacing();
         }
     };
 
