@@ -41,7 +41,7 @@ void GuiElements::ImageViewer::Display()
                 }
             }
 
-            scale = pow(2, scale_power);
+            scale = Math::pow(2, scale_power);
 
             ImGui::PushItemWidth(round(ImGui::GetWindowContentRegionWidth() / 3));
             ImGui::PushAllowKeyboardFocus(false);

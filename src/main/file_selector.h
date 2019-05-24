@@ -3,6 +3,9 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+
+#include "utils/adjust.h"
+
 namespace fs = std::filesystem;
 
 namespace GuiElements
@@ -10,9 +13,25 @@ namespace GuiElements
     class FileSelector
     {
       public:
-        enum class Mode {save_as, open};
+        enum class Mode {open, make_duplicate};
 
       private:
+        struct ModeStrings
+        {
+            std::string window_title;
+            std::string button_confirm;
+        };
+        ModeStrings GetModeStrings(Mode mode)
+        {
+            switch (mode)
+            {
+              case Mode::open:
+                return adjust(ModeStrings{}, window_title = "Отркыть...", button_confirm = "Открыть");
+              case Mode::make_duplicate:
+                return adjust(ModeStrings{}, window_title = "Создать копию...", button_confirm = "Создать копию");
+            }
+        }
+
         bool should_open = 0;
         bool modal_open = 0;
         Mode mode = Mode::open;
@@ -49,6 +68,7 @@ namespace GuiElements
 
         void Open(Mode new_mode, std::vector<std::string> new_allowed_suffixes = {});
         void Display();
+        Mode CurrentMode() const {return mode;}
 
         bool is_done = 0; // This is set to `true` when a file is selected and the modal is closed.
         fs::path result;

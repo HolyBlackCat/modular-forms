@@ -7,15 +7,15 @@
 #include "utils/strings.h"
 
 
-// Export some variables to advise video drivers to use the best available video card for the application.
-OnPlatform(WINDOWS)
-(
-    extern "C"
-    {
-        __declspec(dllexport) uint32_t NvOptimusEnablement                  = 1; // For NVidia. Docs suggest that this should be of type DWORD, but I don't want windows headers here.
-        __declspec(dllexport) int      AmdPowerXpressRequestHighPerformance = 1; // For AMD.
-    }
-)
+// // Export some variables to advise video drivers to use the best available video card for the application.
+// OnPlatform(WINDOWS)
+// (
+//     extern "C"
+//     {
+//         __declspec(dllexport) uint32_t NvOptimusEnablement                  = 1; // For NVidia. Docs suggest that this should be of type DWORD, but I don't want windows headers here.
+//         __declspec(dllexport) int      AmdPowerXpressRequestHighPerformance = 1; // For AMD.
+//     }
+// )
 
 namespace Interface
 {

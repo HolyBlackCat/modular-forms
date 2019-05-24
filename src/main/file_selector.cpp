@@ -129,22 +129,13 @@ void GuiElements::FileSelector::Display()
                 // Initialize stuff.
             }
 
-            std::string title;
-            switch (mode)
-            {
-              case Mode::save_as:
-                title = "Сохранить как...";
-                break;
-              case Mode::open:
-                title = "Открыть";
-                break;
-            }
+            ModeStrings mode_strings = GetModeStrings(mode);
 
-            const std::string text_close = "Отмена", text_done = (mode == Mode::open ? "Открыть" : "Сохранить");
+            const std::string text_close = "Отмена";
             int close_button_width = ImGui::CalcTextSize(text_close.c_str()).x + ImGui::GetStyle().FramePadding.x * 2;
-            int done_button_width = ImGui::CalcTextSize(text_done.c_str()).x + ImGui::GetStyle().FramePadding.x * 2;
+            int done_button_width = ImGui::CalcTextSize(mode_strings.button_confirm.c_str()).x + ImGui::GetStyle().FramePadding.x * 2;
 
-            ImGui::TextUnformatted(title.c_str());
+            ImGui::TextUnformatted(mode_strings.window_title.c_str());
 
             ImGui::SameLine();
 
@@ -180,6 +171,8 @@ void GuiElements::FileSelector::Display()
                 if (in_root_dir)
                     show_double_dot = 0;
             )
+            
+            fs::path new_path;
 
             if (show_double_dot)
             {
@@ -190,9 +183,9 @@ void GuiElements::FileSelector::Display()
                     if (ImGui::IsMouseDoubleClicked(0))
                     {
                         if (in_root_dir)
-                            SetNewPath(fs::path{});
+                            new_path = fs::path{};
                         else
-                            SetNewPath(state.current_path / "..");
+                            new_path = state.current_path / "..";
                     }
                 }
 
@@ -224,7 +217,7 @@ void GuiElements::FileSelector::Display()
                     {
                         if (it.is_directory)
                         {
-                            SetNewPath(state.current_path / it.path);
+                            new_path = state.current_path / it.path;
                         }
                         else
                         {
@@ -246,7 +239,7 @@ void GuiElements::FileSelector::Display()
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - done_button_width - ImGui::GetStyle().ItemSpacing.x);
             ImGui::InputTextWithHint(Str("###open_string:", state.open_string_version).c_str(), "Имя файла", &state.open_string);
             ImGui::SameLine();
-            if (ImGui::Button(text_done.c_str()))
+            if (ImGui::Button(mode_strings.button_confirm.c_str()))
             {
                 ImGui::CloseCurrentPopup();
                 is_done = 1;
@@ -254,6 +247,9 @@ void GuiElements::FileSelector::Display()
             }
 
             ImGui::EndPopup();
+            
+            if (!new_path.empty())
+            	SetNewPath(new_path);
         }
     }
     else

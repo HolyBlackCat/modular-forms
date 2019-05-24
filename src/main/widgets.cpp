@@ -13,9 +13,10 @@ namespace Widgets
             (std::string)(text),
         )
 
-        void Display(int index) override
+        void Display(int index, bool allow_modification) override
         {
             (void)index;
+            (void)allow_modification;
             ImGui::PushTextWrapPos(); // Enable word wrapping.
             ImGui::TextUnformatted(text.c_str());
             ImGui::PopTextWrapPos();
@@ -26,9 +27,10 @@ namespace Widgets
     {
         inline static constexpr const char *internal_name = "spacing";
 
-        void Display(int index) override
+        void Display(int index, bool allow_modification) override
         {
             (void)index;
+            (void)allow_modification;
             for (int i = 0; i < 4; i++)
                 ImGui::Spacing();
         }
@@ -38,9 +40,10 @@ namespace Widgets
     {
         inline static constexpr const char *internal_name = "line";
 
-        void Display(int index) override
+        void Display(int index, bool allow_modification) override
         {
             (void)index;
+            (void)allow_modification;
             ImGui::Separator();
         }
     };
@@ -72,7 +75,7 @@ namespace Widgets
                 size_x = -1;
         }
 
-        void Display(int index) override
+        void Display(int index, bool allow_modification) override
         {
             if (size_x == -1)
             {
@@ -101,7 +104,10 @@ namespace Widgets
 
                     const auto &button = buttons[elem_index];
 
-                    ImGui::Button(Str(Data::EscapeStringForWidgetName(button.label), "###", index, ":", elem_index).c_str(), fvec2(size_x,0));
+                    if (ImGui::Button(Str(Data::EscapeStringForWidgetName(button.label), "###", index, ":", elem_index).c_str(), fvec2(size_x,0)) && allow_modification)
+                    {
+                        // Do something
+                    }
 
                     if (button.tooltip && ImGui::IsItemHovered())
                     {
@@ -155,7 +161,7 @@ namespace Widgets
                 size_x = -1;
         }
 
-        void Display(int index) override
+        void Display(int index, bool allow_modification) override
         {
             if (size_x == -1)
             {
@@ -183,7 +189,11 @@ namespace Widgets
 
                     auto &checkbox = checkboxes[elem_index];
 
-                    ImGui::Checkbox(Str(Data::EscapeStringForWidgetName(checkbox.label), "###", index, ":", elem_index).c_str(), &checkbox.state);
+                    bool new_state = checkbox.state;
+                    if (ImGui::Checkbox(Str(Data::EscapeStringForWidgetName(checkbox.label), "###", index, ":", elem_index).c_str(), &new_state) && allow_modification)
+                    {
+                        checkbox.state = new_state;
+                    }
 
                     if (checkbox.tooltip && ImGui::IsItemHovered())
                     {
@@ -235,7 +245,7 @@ namespace Widgets
                 size_x = -1;
         }
 
-        void Display(int index) override
+        void Display(int index, bool allow_modification) override
         {
             if (size_x == -1)
             {
@@ -263,7 +273,11 @@ namespace Widgets
 
                     const auto &radiobutton = radiobuttons[elem_index];
 
-                    ImGui::RadioButton(Str(Data::EscapeStringForWidgetName(radiobutton.label), "###", index, ":", elem_index).c_str(), &selected, elem_index+1);
+                    int new_selected = selected;
+                    if (ImGui::RadioButton(Str(Data::EscapeStringForWidgetName(radiobutton.label), "###", index, ":", elem_index).c_str(), &new_selected, elem_index+1) && allow_modification)
+                    {
+                        selected = new_selected;
+                    }
 
                     if (radiobutton.tooltip && ImGui::IsItemHovered())
                     {
@@ -291,31 +305,13 @@ namespace Widgets
         Reflect(TextInput)
         (
             (std::string)(label),
-            (int)(max_bytes)(=2),
             (std::string)(value),
             (std::optional<std::string>)(hint),
             (std::optional<bool>)(inline_label),
         )
 
-        // This is null-terminated. We use a vector because ImGui wants a fixed-size buffer.
-        // It's probably possible to somehow directly plug `std::string` in there, but I don't want to bother.
-        std::vector<char> value_vec;
-
-        void Init(const Data::Procedure &) override
+        void Display(int index, bool allow_modification) override
         {
-            if (max_bytes < 2)
-                Program::Error("Max amount of bytes for a text input box has to be at least 2.");
-
-            if (int(value.size()) > max_bytes)
-                Program::Error("Initial value for a text input box has more symbols than the selected max amount.");
-
-            value_vec.resize(max_bytes);
-            std::copy(value.begin(), value.end(), value_vec.begin());
-        }
-
-        void Display(int index) override
-        {
-            bool value_changed = 0;
             bool use_inline_label = inline_label ? *inline_label : 1;
 
             if (!use_inline_label)
@@ -323,13 +319,11 @@ namespace Widgets
 
             std::string inline_label = Str(use_inline_label ? Data::EscapeStringForWidgetName(label) : "", "###", index);
 
-            if (hint) // Note `tmp.size()+1` below. It's because `std::string` also includes space for a null-terminator.
-                value_changed = ImGui::InputTextWithHint(inline_label.c_str(), hint->c_str(), value_vec.data(), value_vec.size());
+            if (hint)
+                ImGui::InputTextWithHint(inline_label.c_str(), hint->c_str(), &value, !allow_modification * ImGuiInputTextFlags_ReadOnly);
             else
-                value_changed = ImGui::InputText(inline_label.c_str(), value_vec.data(), value_vec.size());
+                ImGui::InputText(inline_label.c_str(), &value, !allow_modification * ImGuiInputTextFlags_ReadOnly);
 
-            if (value_changed)
-                value = value_vec.data();
         }
     };
 
@@ -365,8 +359,10 @@ namespace Widgets
                 image.data = Data::Image::Load(proc.base_dir + image.file_name);
         }
 
-        void Display(int index) override
+        void Display(int index, bool allow_modification) override
         {
+            (void)allow_modification;
+
             constexpr int padding = 2;
 
             int width = ImGui::GetWindowContentRegionWidth() / columns - ImGui::GetStyle().ItemSpacing.x - padding * 2;

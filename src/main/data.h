@@ -49,7 +49,7 @@ namespace Data // Widget system and JSON serialization
         WidgetBase_Low &operator=(WidgetBase_Low &&) = default;
 
         virtual void Init(const Procedure &) {};
-        virtual void Display(int index) = 0;
+        virtual void Display(int index, bool allow_modification) = 0;
         virtual ~WidgetBase_Low() = default;
     };
 

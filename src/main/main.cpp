@@ -29,6 +29,14 @@ struct StateMain : State
         fs::path path;
         bool first_tick = 1;
         bool first_tick_at_this_step = 1;
+
+        inline static unsigned int id_counter = 1;
+        int id = id_counter++;
+
+        void RegeneratePrettyName()
+        {
+            pretty_name = path.stem().string(); // `stem` means file name without extension.
+        }
     };
 
     std::vector<Tab> tabs;
@@ -59,8 +67,8 @@ struct StateMain : State
 
             Tab new_tab;
 
-            new_tab.pretty_name = path.stem().string(); // `stem` means file name without extension.
             new_tab.path = path;
+            new_tab.RegeneratePrettyName();
 
             Json json(MemoryFile(path.string()).string(), 64);
             new_tab.proc = Data::ReflectedObjectFromJson<Data::Procedure>(json.GetView());
@@ -70,18 +78,10 @@ struct StateMain : State
 
             Data::InitializeWidgetsRecursively(new_tab.proc, new_tab.proc);
 
-            if (new_tab.proc.name.find_first_of("\n") != std::string::npos)
-                Program::Error("Line feeds are not allowed in procedure names.");
             if (new_tab.proc.steps.size() < 1)
                 Program::Error("The procedure must have at least one step.");
             if (new_tab.proc.current_step_index < 0 || new_tab.proc.current_step_index >= int(new_tab.proc.steps.size()))
                 Program::Error("Current step index is out of range.");
-
-            for (const Data::ProcedureStep &step : new_tab.proc.steps)
-            {
-                if (step.name.find_first_of("\n") != std::string::npos)
-                    Program::Error("Invalid procedure name.");
-            }
 
             tabs.push_back(std::move(new_tab));
         }
@@ -96,6 +96,19 @@ struct StateMain : State
         for (const std::string &new_file : window.DroppedFiles())
             Load(new_file);
 
+        if (file_selector.is_done)
+        {
+            file_selector.is_done = 0;
+            switch (file_selector.CurrentMode())
+            {
+              case GuiElements::FileSelector::Mode::open:
+                Load(file_selector.result);
+                break;
+              default:
+                break;
+            }
+        }
+
         constexpr int window_flags =
             ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoMove |
@@ -103,19 +116,22 @@ struct StateMain : State
             ImGuiWindowFlags_NoSavedSettings |
             ImGuiWindowFlags_HorizontalScrollbar |
             ImGuiWindowFlags_NoTitleBar |
-            ImGuiWindowFlags_MenuBar;
+            ImGuiWindowFlags_MenuBar |
+            ImGuiWindowFlags_NoBringToFrontOnFocus;
 
         ImGui::SetNextWindowPos(fvec2(0));
         ImGui::SetNextWindowSize(window.Size());
 
+        ivec2 old_frame_padding = ImGui::GetStyle().FramePadding;
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ivec2(4,2));
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ivec2(0));
 
         ImGui::Begin("###procedure", 0, window_flags);
 
-        ImGui::PopStyleVar(2);
+        ImGui::PopStyleVar(3);
 
         { // Menu bar
             if (ImGui::BeginMenuBar())
@@ -158,26 +174,49 @@ struct StateMain : State
         };
 
         { // Tabs
+            ImGui::Spacing();
+
             int old_frame_border_size = ImGui::GetStyle().FrameBorderSize;
+
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0); // Disable border around the button that opens the dropdown tab list.
             FINALLY( ImGui::PopStyleVar(); )
 
-            int tab_bar_flags = ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_FittingPolicyScroll | ImGuiTabBarFlags_Reorderable;
+            int tab_bar_flags = ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_FittingPolicyScroll | ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_NoTooltip;
             if (tabs.size() > 0)
                 tab_bar_flags |= ImGuiTabBarFlags_TabListPopupButton;
 
             bool have_tabs = tabs.size() > 0; // We save this to a variable to avoid potential jitter when closing the last tab.
             if (ImGui::BeginTabBar("tabs", tab_bar_flags))
             {
+                FINALLY( ImGui::EndTabBar(); )
+
                 for (size_t i = 0; i < tabs.size(); i++)
                 {
                     Tab &tab = tabs[i];
 
                     bool keep_tab_open = 1;
 
-                    if (ImGui::BeginTabItem(tab.pretty_name.c_str(), &keep_tab_open))
+
+                    if (ImGui::BeginTabItem(Str(Data::EscapeStringForWidgetName(tab.pretty_name), "###tab:", tab.id).c_str(), &keep_tab_open))
                     {
+                        FINALLY( ImGui::EndTabItem(); )
+
                         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, old_frame_border_size);
+                        FINALLY( ImGui::PopStyleVar(); )
+
+                        ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetStyle().ItemSpacing.y);
+
+                        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImGui::GetStyle().WindowPadding);
+                        FINALLY( ImGui::PopStyleVar(); )
+
+                        ImGui::PushStyleColor(ImGuiCol_Border, 0);
+                        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0);
+
+                        ImGui::BeginChild("###current_tab", ivec2(0), true);
+                        FINALLY( ImGui::EndChild(); )
+
+                        ImGui::PopStyleVar();
+                        ImGui::PopStyleColor();
 
                         active_tab = i;
 
@@ -226,17 +265,21 @@ struct StateMain : State
                         { // Current step
                             ImGui::TextUnformatted(current_step.name.c_str());
 
-                            int bottom_panel_h = ImGui::GetFrameHeightWithSpacing(); // ImGui console example suggests this.
+                            int bottom_panel_h = ImGui::GetFrameHeightWithSpacing();
                             ImGui::BeginChildFrame(ImGui::GetID(Str("widgets:", tab.proc.current_step_index).c_str()), fvec2(0, -bottom_panel_h), 1);
+                            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, old_frame_padding);
 
                             int widget_index = 0;
                             for (Data::Widget &widget : current_step.widgets)
                             {
                                 if (widget_index != 0)
                                     ImGui::Spacing();
-                                widget->Display(widget_index++);
+                                widget->Display(widget_index++, true);
 
                             }
+
+                            ImGui::PopStyleVar();
+                            ImGui::EndChildFrame();
 
                             if (ImGui::Button("Завершить шаг"))
                             {
@@ -245,17 +288,11 @@ struct StateMain : State
                                 else
                                     EndStep();
                             }
-
-                            ImGui::EndChildFrame();
                         }
 
                         tab.first_tick = 0;
                         tab.first_tick_at_this_step = finishing_step_at_this_tick;
                         finishing_step_at_this_tick = 0;
-
-                        ImGui::EndTabItem();
-
-                        ImGui::PopStyleVar();
                     }
 
                     if (!keep_tab_open)
@@ -264,12 +301,14 @@ struct StateMain : State
                         i--;
                     }
                 }
-
-                ImGui::EndTabBar();
             }
 
             if (!have_tabs)
+            {
+                ImGui::Indent();
                 ImGui::TextDisabled("%s", "Нет открытых файлов");
+                ImGui::Unindent();
+            }
         }
 
         image_viewer.Display();
@@ -337,7 +376,9 @@ struct StateMain : State
     }
 };
 
+#if IsNotOnPlatform(LINUX)
 #define main SDL_main
+#endif
 
 int main(int argc, char **argv)
 {
@@ -380,7 +421,7 @@ int main(int argc, char **argv)
             std::string font_filename = asset_dir + "assets/Roboto-Regular.ttf";
             if (!std::filesystem::exists(font_filename))
                 Program::Error("Font file `", font_filename, "` is missing.");
-            if (!io.Fonts->AddFontFromFileTTF(font_filename.c_str(), 20.0f, 0, glyph_ranges.begin()))
+            if (!io.Fonts->AddFontFromFileTTF(font_filename.c_str(), 18.0f, 0, glyph_ranges.begin()))
                 Program::Error("Unable to load font `", font_filename, "`.");
 
             ImGuiFreeType::BuildFontAtlas(io.Fonts, ImGuiFreeType::MonoHinting);
@@ -392,7 +433,7 @@ int main(int argc, char **argv)
         }
     }
 
-    Metronome metronome(60);
+    Metronome metronome(30);
     Clock::DeltaTimer delta_timer;
 
     Graphics::SetClearColor(fvec3(1));
