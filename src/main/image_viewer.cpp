@@ -22,7 +22,7 @@ void GuiElements::ImageViewer::Display()
             const std::string text_close = "Закрыть";
 
             const auto &image = *current_image;
-            ivec2 available_size = iround(fvec2(ImGui::GetContentRegionAvail())).sub_y(ImGui::GetFrameHeightWithSpacing() + 2);
+            ivec2 available_size = iround(fvec2(ImGui::GetContentRegionAvail())) with(y -= ImGui::GetFrameHeightWithSpacing() + 2);
 
             fvec2 relative_image_size = image.pixel_size / fvec2(available_size);
             constexpr float max_scale = 8;

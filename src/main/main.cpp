@@ -363,7 +363,7 @@ int main(int argc, char **argv)
         }
 
         { // GUI
-            auto config = Interface::ImGuiController::Config{} with (store_state_in_file = "");
+            auto config = adjust(Interface::ImGuiController::Config{}, store_state_in_file = "");
             gui_controller = Interface::ImGuiController(Poly::derived<Interface::ImGuiController::GraphicsBackend_FixedFunction>, config);
 
             IMGUI_CHECKVERSION();

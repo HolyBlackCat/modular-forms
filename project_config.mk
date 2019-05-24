@@ -9,11 +9,11 @@ OUTPUT_FILE := bin/modular-forms
 LINKER_MODE := CXX
 
 # Flags
-CXXFLAGS := -Wall -Wextra -pedantic-errors -std=c++2a
+CXXFLAGS := -Wall -Wextra -pedantic-errors -std=c++2a -frelaxed-template-template-args
 LDFLAGS :=
 # Important flags
-override CXXFLAGS += -include src/utils/common.h -include src/program/parachute.h -Ilib/include -Isrc
-override LDFLAGS += -Llib -lmingw32 -lSDL2main -lSDL2.dll -lfreetype -lbz2 -lz -lfmt -lstdc++fs
+override CXXFLAGS += -include src/utils/common.h -include src/program/parachute.h -Ilib/include -Ilib/x86_64-w64-mingw32/include -Isrc
+override LDFLAGS += -Llib/x86_64-w64-mingw32 -lmingw32 -lSDL2main -lSDL2.dll -lfreetype -lbz2 -lz -lfmt -lstdc++fs
 
 # Build modes
 $(call new_mode,debug)
@@ -27,7 +27,7 @@ $(mode_flags) CXXFLAGS += -DNDEBUG -O3
 $(mode_flags) LDFLAGS += -O3 -s -mwindows
 
 # File-specific flags
-FILE_SPECIFIC_FLAGS := lib/*.cpp > -O3
+FILE_SPECIFIC_FLAGS := lib/implementation.cpp lib/glfl.cpp > -g0 -O3
 
 # Precompiled headers
 PRECOMPILED_HEADERS := src/main/*.cpp>src/main/master.hpp

@@ -16,6 +16,7 @@
 #include "program/errors.h"
 #include "program/exit.h"
 #include "reflection/complete.h"
+#include "utils/adjust.h"
 #include "utils/clock.h"
 #include "utils/format.h"
 #include "utils/json.h"
@@ -27,4 +28,3 @@
 #include "utils/poly_storage.h"
 #include "utils/strings.h"
 #include "utils/unicode.h"
-#include "utils/with.h"

@@ -170,7 +170,7 @@ void GuiElements::FileSelector::Display()
             ImGui::PopStyleVar(2);
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 6);
 
-            ImGui::BeginChildFrame(ImGui::GetID(state.current_path.string().c_str()), ivec2(ImGui::GetContentRegionAvail()) with (y -= ImGui::GetFrameHeightWithSpacing()));
+            ImGui::BeginChildFrame(ImGui::GetID(state.current_path.string().c_str()), ivec2(ImGui::GetContentRegionAvail()) with(y -= ImGui::GetFrameHeightWithSpacing()));
 
             bool in_root_dir = state.current_path.relative_path().empty();
             bool show_double_dot = !state.current_path.empty();
