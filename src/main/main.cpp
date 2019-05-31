@@ -122,16 +122,18 @@ struct StateMain : State
         ImGui::SetNextWindowPos(fvec2(0));
         ImGui::SetNextWindowSize(window.Size());
 
-        ivec2 old_frame_padding = ImGui::GetStyle().FramePadding;
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ivec2(4,2));
+        ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 2);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ivec2(5));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ivec2(4,1));
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ivec2(0));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ivec2(0)); // Sic, we set it again.
 
         ImGui::Begin("###procedure", 0, window_flags);
 
         ImGui::PopStyleVar(3);
+
 
         { // Menu bar
             if (ImGui::BeginMenuBar())
@@ -151,7 +153,7 @@ struct StateMain : State
             }
         }
 
-        ImGui::PopStyleVar(1);
+        ImGui::PopStyleVar(3);
 
         bool finishing_step_at_this_tick = 0;
 
@@ -206,9 +208,6 @@ struct StateMain : State
 
                         ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetStyle().ItemSpacing.y);
 
-                        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImGui::GetStyle().WindowPadding);
-                        FINALLY( ImGui::PopStyleVar(); )
-
                         ImGui::PushStyleColor(ImGuiCol_Border, 0);
                         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0);
 
@@ -229,7 +228,7 @@ struct StateMain : State
                             for (const Data::ProcedureStep &step : tab.proc.steps)
                                 clamp_var_min(list_column_width, ImGui::CalcTextSize(step.name.c_str()).x);
 
-                            list_column_width += ImGui::GetStyle().ScrollbarSize + ImGui::GetStyle().WindowPadding.x * 4 + ImGui::GetStyle().ItemSpacing.x;
+                            list_column_width += ImGui::GetStyle().ScrollbarSize + ImGui::GetStyle().FramePadding.x * 4 + ImGui::GetStyle().ItemSpacing.x;
 
                             ImGui::SetColumnWidth(-1, list_column_width);
                         }
@@ -267,18 +266,14 @@ struct StateMain : State
 
                             int bottom_panel_h = ImGui::GetFrameHeightWithSpacing();
                             ImGui::BeginChildFrame(ImGui::GetID(Str("widgets:", tab.proc.current_step_index).c_str()), fvec2(0, -bottom_panel_h), 1);
-                            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, old_frame_padding);
 
                             int widget_index = 0;
                             for (Data::Widget &widget : current_step.widgets)
                             {
-                                if (widget_index != 0)
-                                    ImGui::Spacing();
                                 widget->Display(widget_index++, true);
-
+                                ImGui::Spacing(); // The gui looks better with spacing after the last widget.
                             }
 
-                            ImGui::PopStyleVar();
                             ImGui::EndChildFrame();
 
                             if (ImGui::Button("Завершить шаг"))
@@ -373,6 +368,7 @@ struct StateMain : State
         ImGui::End();
 
         // ImGui::ShowDemoWindow();
+        // ImGui::ShowStyleEditor();
     }
 };
 
@@ -433,7 +429,7 @@ int main(int argc, char **argv)
         }
     }
 
-    Metronome metronome(30);
+    Metronome metronome(60);
     Clock::DeltaTimer delta_timer;
 
     Graphics::SetClearColor(fvec3(1));
@@ -462,12 +458,12 @@ int main(int argc, char **argv)
 
             gui_controller.PreTick();
             state->Tick();
-        }
 
-        gui_controller.PreRender();
-        Graphics::Clear();
-        gui_controller.PostRender();
-        window.SwapBuffers();
+            gui_controller.PreRender();
+            Graphics::Clear();
+            gui_controller.PostRender();
+            window.SwapBuffers();
+        }
 
         uint64_t delta = Clock::Time() - delta_timer.LastTimePoint();
         double delta_secs = Clock::TicksToSeconds(delta);
