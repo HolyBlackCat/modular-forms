@@ -52,9 +52,9 @@ namespace Graphics
         };
 
       public:
-        FrameBuffer(decltype(nullptr)) {}
+        FrameBuffer() {}
 
-        FrameBuffer()
+        FrameBuffer(decltype(nullptr))
         {
             glGenFramebuffers(1, &data.handle);
             if (!data.handle)
@@ -72,9 +72,9 @@ namespace Graphics
         }
 
         FrameBuffer(FrameBuffer &&other) noexcept : data(std::exchange(other.data, {})) {}
-        FrameBuffer &operator=(FrameBuffer other) noexcept
+        FrameBuffer &operator=(FrameBuffer &&other) noexcept
         {
-            std::swap(data, other.data);
+            data = std::exchange(other.data, {});
             return *this;
         }
 

@@ -1752,6 +1752,8 @@ int main(int argc, char **argv)
                 using std::uint64_t;
                 using std::size_t;
                 using std::ptrdiff_t;
+                using std::intptr_t;
+                using std::uintptr_t;
 
                 using std::sqrt;
                 using std::cos;

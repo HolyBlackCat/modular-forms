@@ -468,7 +468,7 @@ namespace Data // Images
     {
       public:
         std::string file_name;
-        Graphics::TexObject texture = nullptr;
+        Graphics::TexObject texture;
         ivec2 pixel_size = ivec2(0);
 
       private:
@@ -498,7 +498,7 @@ namespace Data // Images
             {
                 Graphics::Image image(file);
                 pixel_size = image.Size();
-                texture = Graphics::TexObject();
+                texture = Graphics::TexObject(nullptr);
                 Graphics::TexUnit(texture).Interpolation(Graphics::linear).Wrap(Graphics::fill).SetData(image);
             }
             catch (std::exception &e)

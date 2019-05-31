@@ -249,7 +249,7 @@ namespace Graphics
         }
 
 
-        Shader(decltype(nullptr)) {}
+        Shader() {}
 
         Shader(std::string name, const ShaderConfig &cfg, std::string vert_source, std::string frag_source, const std::vector<std::string> &attributes = {})
         {
@@ -363,9 +363,9 @@ namespace Graphics
         }
 
         Shader(Shader &&other) noexcept : data(std::exchange(other.data, {})) {}
-        Shader &operator=(Shader other) noexcept // Note the pass by value to utilize copy&swap idiom.
+        Shader &operator=(Shader &&other) noexcept
         {
-            std::swap(data, other.data);
+            data = std::exchange(other.data, {});
             return *this;
         }
 
