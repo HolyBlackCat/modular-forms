@@ -1,10 +1,12 @@
 #include <iostream>
 
 #include "main/common.h"
-#include "main/data.h"
 #include "main/file_selector.h"
+#include "main/gui_strings.h"
 #include "main/image_viewer.h"
 #include "main/options.h"
+#include "main/procedure_data.h"
+#include "main/widgets.h"
 
 namespace fs = std::filesystem;
 
@@ -71,12 +73,12 @@ struct StateMain : State
             new_tab.RegeneratePrettyName();
 
             Json json(MemoryFile(path.string()).string(), 64);
-            new_tab.proc = Data::ReflectedObjectFromJson<Data::Procedure>(json.GetView());
+            new_tab.proc = Widgets::ReflectedObjectFromJson<Data::Procedure>(json.GetView());
 
             if (path.has_parent_path())
                 new_tab.proc.base_dir = path.parent_path().generic_string() + '/';
 
-            Data::InitializeWidgetsRecursively(new_tab.proc, new_tab.proc);
+            Widgets::InitializeWidgetsRecursively(new_tab.proc, new_tab.proc);
 
             if (new_tab.proc.steps.size() < 1)
                 Program::Error("The procedure must have at least one step.");
@@ -268,7 +270,7 @@ struct StateMain : State
                             ImGui::BeginChildFrame(ImGui::GetID(Str("widgets:", tab.proc.current_step_index).c_str()), fvec2(0, -bottom_panel_h), 1);
 
                             int widget_index = 0;
-                            for (Data::Widget &widget : current_step.widgets)
+                            for (Widgets::Widget &widget : current_step.widgets)
                             {
                                 widget->Display(widget_index++, true);
                                 ImGui::Spacing(); // The gui looks better with spacing after the last widget.
@@ -429,9 +431,6 @@ int main(int argc, char **argv)
         }
     }
 
-    Metronome metronome(60);
-    Clock::DeltaTimer delta_timer;
-
     Graphics::SetClearColor(fvec3(1));
 
     Poly::Storage<State> state;
@@ -444,31 +443,28 @@ int main(int argc, char **argv)
     }
 
 
+    constexpr double target_frame_duration = 1 / 60.;
+
     while (1)
     {
-        uint64_t last_frame_len = delta_timer();
-        while (metronome.Tick(last_frame_len))
-        {
-            window.ProcessEvents({gui_controller.EventHook(Interface::ImGuiController::pass_events)});
+        uint64_t frame_start = Clock::Time();
 
-            if (window.Resized())
-                Graphics::Viewport(window.Size());
-            if (window.ExitRequested())
-                state->exit_requested = 1;
+        window.ProcessEvents({gui_controller.EventHook(Interface::ImGuiController::pass_events)});
+        if (window.Resized())
+            Graphics::Viewport(window.Size());
+        if (window.ExitRequested())
+            state->exit_requested = 1;
 
-            gui_controller.PreTick();
-            state->Tick();
+        gui_controller.PreTick();
+        state->Tick();
 
-            gui_controller.PreRender();
-            Graphics::Clear();
-            gui_controller.PostRender();
-            window.SwapBuffers();
-        }
+        gui_controller.PreRender();
+        Graphics::Clear();
+        gui_controller.PostRender();
+        window.SwapBuffers();
 
-        uint64_t delta = Clock::Time() - delta_timer.LastTimePoint();
-        double delta_secs = Clock::TicksToSeconds(delta);
-        uint64_t target_delta_secs = 1.0 / metronome.Frequency();
-        if (target_delta_secs > delta_secs)
-            Clock::WaitSeconds(target_delta_secs - delta_secs);
+        double delta = Clock::TicksToSeconds(Clock::Time() - frame_start);
+        if (target_frame_duration > delta)
+            Clock::WaitSeconds(target_frame_duration - delta);
     }
 }

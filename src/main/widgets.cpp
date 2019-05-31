@@ -1,10 +1,15 @@
-#include "main/data.h"
+#include <string>
 
+#include <imgui.h>
+
+#include "main/images.h"
+#include "main/gui_strings.h"
 #include "main/options.h"
+#include "main/procedure_data.h"
 
 namespace Widgets
 {
-    struct Text : Data::WidgetBase<Text>
+    struct Text : Widgets::WidgetBase<Text>
     {
         inline static constexpr const char *internal_name = "text";
 
@@ -23,7 +28,7 @@ namespace Widgets
         }
     };
 
-    struct Spacing : Data::WidgetBase<Spacing>
+    struct Spacing : Widgets::WidgetBase<Spacing>
     {
         inline static constexpr const char *internal_name = "spacing";
 
@@ -36,7 +41,7 @@ namespace Widgets
         }
     };
 
-    struct Line : Data::WidgetBase<Line>
+    struct Line : Widgets::WidgetBase<Line>
     {
         inline static constexpr const char *internal_name = "line";
 
@@ -48,7 +53,7 @@ namespace Widgets
         }
     };
 
-    struct ButtonList : Data::WidgetBase<ButtonList>
+    struct ButtonList : Widgets::WidgetBase<ButtonList>
     {
         inline static constexpr const char *internal_name = "button_list";
 
@@ -128,7 +133,7 @@ namespace Widgets
         }
     };
 
-    struct CheckBoxList : Data::WidgetBase<CheckBoxList>
+    struct CheckBoxList : Widgets::WidgetBase<CheckBoxList>
     {
         inline static constexpr const char *internal_name = "checkbox_list";
 
@@ -214,7 +219,7 @@ namespace Widgets
         }
     };
 
-    struct RadioButtonList : Data::WidgetBase<RadioButtonList>
+    struct RadioButtonList : Widgets::WidgetBase<RadioButtonList>
     {
         inline static constexpr const char *internal_name = "radiobutton_list";
 
@@ -298,7 +303,7 @@ namespace Widgets
         }
     };
 
-    struct TextInput : Data::WidgetBase<TextInput>
+    struct TextInput : Widgets::WidgetBase<TextInput>
     {
         inline static constexpr const char *internal_name = "text_input";
 
@@ -327,7 +332,7 @@ namespace Widgets
         }
     };
 
-    struct ImageList : Data::WidgetBase<ImageList>
+    struct ImageList : Widgets::WidgetBase<ImageList>
     {
         inline static constexpr const char *internal_name = "image_list";
 

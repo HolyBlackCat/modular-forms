@@ -1,45 +1,21 @@
 #pragma once
 
-#include <map>
-#include <set>
 #include <string>
-#include <type_traits>
-#include <vector>
 
-#include <imgui.h>
-
-#include "graphics/texture.h"
 #include "program/errors.h"
 #include "reflection/complete.h"
-#include "utils/poly_storage.h"
 #include "utils/json.h"
-#include "utils/memory_file.h"
+#include "utils/poly_storage.h"
 #include "utils/strings.h"
+#include "utils/unicode.h"
 
-namespace Data // Strings
-{
-    inline const std::string zero_width_space = "\xEF\xBB\xBF";
-
-    // `##` has a special meaning for ImGui when used in widget names, so we break those with zero-width spaces.
-    inline std::string EscapeStringForWidgetName(const std::string &source_str)
-    {
-        std::string ret;
-
-        for (char ch : source_str)
-        {
-            ret += ch;
-            if (ch == '#')
-                ret += zero_width_space;
-        }
-
-        return ret;
-    }
-}
-
-namespace Data // Widget system and JSON serialization
+namespace Data
 {
     struct Procedure;
+}
 
+namespace Widgets
+{
     struct WidgetBase_Low
     {
         WidgetBase_Low() = default;
@@ -48,7 +24,7 @@ namespace Data // Widget system and JSON serialization
         WidgetBase_Low &operator=(const WidgetBase_Low &) = default;
         WidgetBase_Low &operator=(WidgetBase_Low &&) = default;
 
-        virtual void Init(const Procedure &) {};
+        virtual void Init(const Data::Procedure &) {};
         virtual void Display(int index, bool allow_modification) = 0;
         virtual ~WidgetBase_Low() = default;
     };
@@ -195,7 +171,7 @@ namespace Data // Widget system and JSON serialization
         }
     }
 
-    template <typename T> void InitializeWidgetsRecursively(T &object, const Procedure &proc)
+    template <typename T> void InitializeWidgetsRecursively(T &object, const Data::Procedure &proc)
     {
         if constexpr (std::is_same_v<T, Widget>)
         {
@@ -460,104 +436,4 @@ namespace Data // Widget system and JSON serialization
     };
     template <typename T, int * = &WidgetBase_impl_0<T>::dummy> struct WidgetBase_impl_1 : WidgetBase_impl_0<T> {}; // Yes, this is truly necessary.
     template <typename T> class WidgetBase : public WidgetBase_impl_1<T> {};
-}
-
-namespace Data // Images
-{
-    class Image
-    {
-      public:
-        std::string file_name;
-        Graphics::TexObject texture;
-        ivec2 pixel_size = ivec2(0);
-
-      private:
-        struct LoadedImage
-        {
-            std::shared_ptr<Image> data;
-
-            operator const std::string &() const
-            {
-                DebugAssert("Loaded image handle is null.", bool(data));
-                return data->file_name;
-            }
-
-            friend bool operator<(const std::string &a, const std::string &b)
-            {
-                return a < b;
-            }
-        };
-
-        inline static std::set<LoadedImage, std::less<>> loaded_images;
-
-      public:
-        Image(std::string file_name) : file_name(file_name) // Don't use this constructor directly, as it doesn't provide caching. Use `Load()` instead.
-        {
-            MemoryFile file(file_name);
-            try
-            {
-                Graphics::Image image(file);
-                pixel_size = image.Size();
-                texture = Graphics::TexObject(nullptr);
-                Graphics::TexUnit(texture).Interpolation(Graphics::linear).Wrap(Graphics::fill).SetData(image);
-            }
-            catch (std::exception &e)
-            {
-                Program::Error("While loading image `", file_name, "`: ", e.what());
-            }
-        }
-
-        static std::shared_ptr<Image> Load(std::string file_name)
-        {
-            auto it = loaded_images.find(file_name);
-            if (it == loaded_images.end())
-            {
-                return loaded_images.emplace(LoadedImage{std::make_shared<Image>(file_name)}).first->data;
-            }
-            else
-            {
-                return it->data;
-            }
-        }
-
-        Image(const Image &) = delete;
-        Image &operator=(const Image &) = delete;
-
-        ~Image()
-        {
-            auto it = loaded_images.find(file_name);
-            DebugAssert("Unable to destroy Image: not in the cache.", it != loaded_images.end());
-            loaded_images.erase(it);
-        }
-
-        ImTextureID TextureHandle() const
-        {
-            return (ImTextureID)(uintptr_t)texture.Handle();
-        }
-    };
-
-    [[maybe_unused]] // Clang is silly.
-    inline const Image *clicked_image = 0;
-}
-
-namespace Data // Procedure data structure
-{
-    ReflectStruct(ProcedureStep,(
-        (std::string)(name),
-        (std::optional<bool>)(confirm),
-        (std::vector<Data::Widget>)(widgets),
-    ))
-
-    struct Procedure
-    {
-        Reflect(Procedure)
-        (
-            (std::string)(name),
-            (int)(current_step_index)(=0),
-            (std::optional<bool>)(confirm_exit),
-            (std::vector<ProcedureStep>)(steps),
-        )
-
-        std::string base_dir;
-    };
 }

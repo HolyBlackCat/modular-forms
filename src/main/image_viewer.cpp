@@ -1,8 +1,8 @@
 #include "image_viewer.h"
 
 #include "main/common.h"
-#include "main/data.h"
 #include "main/options.h"
+#include "main/widgets.h"
 
 void GuiElements::ImageViewer::Display()
 {

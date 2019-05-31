@@ -1,8 +1,11 @@
 #include "file_selector.h"
 
-#include "main/data.h"
+#include <imgui.h>
+
 #include "main/common.h"
+#include "main/gui_strings.h"
 #include "main/options.h"
+#include "main/widgets.h"
 
 GuiElements::FileSelector::FileSelector()
 {
@@ -171,7 +174,7 @@ void GuiElements::FileSelector::Display()
                 if (in_root_dir)
                     show_double_dot = 0;
             )
-            
+
             fs::path new_path;
 
             if (show_double_dot)
@@ -247,7 +250,7 @@ void GuiElements::FileSelector::Display()
             }
 
             ImGui::EndPopup();
-            
+
             if (!new_path.empty())
             	SetNewPath(new_path);
         }
