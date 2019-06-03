@@ -30,7 +30,9 @@ struct StateMain : State
         std::string pretty_name;
         fs::path path;
         bool first_tick = 1;
-        bool first_tick_at_this_step = 1;
+
+        int visible_step = 0;
+        bool should_adjust_step_list_scrolling = 0;
 
         inline static unsigned int id_counter = 1;
         int id = id_counter++;
@@ -82,8 +84,10 @@ struct StateMain : State
 
             if (new_tab.proc.steps.size() < 1)
                 Program::Error("The procedure must have at least one step.");
-            if (new_tab.proc.current_step_index < 0 || new_tab.proc.current_step_index >= int(new_tab.proc.steps.size()))
+            if (new_tab.proc.current_step < 0 || new_tab.proc.current_step >= int(new_tab.proc.steps.size()))
                 Program::Error("Current step index is out of range.");
+
+            new_tab.visible_step = new_tab.proc.current_step;
 
             tabs.push_back(std::move(new_tab));
         }
@@ -157,8 +161,6 @@ struct StateMain : State
 
         ImGui::PopStyleVar(3);
 
-        bool finishing_step_at_this_tick = 0;
-
         bool need_step_end_confirmation = 0;
         auto EndStep = [&]
         {
@@ -167,12 +169,13 @@ struct StateMain : State
 
             Tab &tab = tabs[active_tab];
 
-            tab.proc.current_step_index++;
-            finishing_step_at_this_tick = 1;
+            tab.proc.current_step++;
+            tab.visible_step = tab.proc.current_step;
+            tab.should_adjust_step_list_scrolling = 1;
 
-            if (tab.proc.current_step_index >= int(tab.proc.steps.size()))
+            if (tab.proc.current_step >= int(tab.proc.steps.size()))
             {
-                tab.proc.current_step_index--;
+                tab.proc.current_step--;
                 Program::Exit();
             }
         };
@@ -199,7 +202,6 @@ struct StateMain : State
                     Tab &tab = tabs[i];
 
                     bool keep_tab_open = 1;
-
 
                     if (ImGui::BeginTabItem(Str(Data::EscapeStringForWidgetName(tab.pretty_name), "###tab:", tab.id).c_str(), &keep_tab_open))
                     {
@@ -241,21 +243,25 @@ struct StateMain : State
                         else if (int max_list_column_width = iround(Options::Visual::step_list_max_width_relative * ImGui::GetWindowContentRegionWidth()); list_column_width > max_list_column_width)
                             ImGui::SetColumnWidth(-1, max_list_column_width);
 
-                        Data::ProcedureStep &current_step = tab.proc.steps[tab.proc.current_step_index];
+                        Data::ProcedureStep &current_step = tab.proc.steps[tab.visible_step];
 
                         { // Step list
                             ImGui::TextDisabled("%s", "Шаги");
 
                             ImGui::BeginChildFrame(ImGui::GetID("step_list"), ImGui::GetContentRegionAvail(), ImGuiWindowFlags_HorizontalScrollbar);
 
-                            // We use this rather than `current_step_index` to prevent jitter of the list when changing steps.
-                            std::size_t cur_step = tab.proc.current_step_index - (tab.proc.current_step_index > 0 ? tab.first_tick_at_this_step : 0);
-
                             for (std::size_t i = 0; i < tab.proc.steps.size(); i++)
                             {
-                                ImGui::Selectable(Data::EscapeStringForWidgetName(tab.proc.steps[i].name).c_str(), i == cur_step, i > cur_step ? ImGuiSelectableFlags_Disabled : 0);
-                                if (tab.first_tick_at_this_step && i == cur_step)
+                                if (ImGui::Selectable(Data::EscapeStringForWidgetName(tab.proc.steps[i].name).c_str(), int(i) == tab.visible_step, int(i) > tab.proc.current_step ? ImGuiSelectableFlags_Disabled : 0))
+                                {
+                                    tab.visible_step = i;
+                                }
+
+                                if (tab.should_adjust_step_list_scrolling && int(i) == tab.visible_step)
+                                {
                                     ImGui::SetScrollHereY(0.75);
+                                    tab.should_adjust_step_list_scrolling = 0;
+                                }
                             }
 
                             ImGui::EndChildFrame();
@@ -267,13 +273,13 @@ struct StateMain : State
                             ImGui::TextUnformatted(current_step.name.c_str());
 
                             int bottom_panel_h = ImGui::GetFrameHeightWithSpacing();
-                            ImGui::BeginChildFrame(ImGui::GetID(Str("widgets:", tab.proc.current_step_index).c_str()), fvec2(0, -bottom_panel_h), 1);
+                            ImGui::BeginChildFrame(ImGui::GetID(Str("widgets:", tab.proc.current_step).c_str()), fvec2(0, -bottom_panel_h), 1);
 
                             int widget_index = 0;
                             for (Widgets::Widget &widget : current_step.widgets)
                             {
-                                widget->Display(widget_index++, true);
-                                ImGui::Spacing(); // The gui looks better with spacing after the last widget.
+                                widget->Display(widget_index++, tab.proc.current_step == tab.visible_step);
+                                ImGui::Spacing(); // The gui looks better with spacing after each widget including the last one.
                             }
 
                             ImGui::EndChildFrame();
@@ -288,8 +294,6 @@ struct StateMain : State
                         }
 
                         tab.first_tick = 0;
-                        tab.first_tick_at_this_step = finishing_step_at_this_tick;
-                        finishing_step_at_this_tick = 0;
                     }
 
                     if (!keep_tab_open)
@@ -336,7 +340,6 @@ struct StateMain : State
             auto Exit = [&]
             {
                 // Data::ReflectedObjectToJsonFile(proc, current_file_name);
-                new(&gui_controller) Interface::ImGuiController; // The destructor is glitchy, so we disable it.
                 Program::Exit();
             };
 
@@ -344,7 +347,17 @@ struct StateMain : State
             {
                 exit_requested = 0;
 
-                if (HaveActiveTab() && tabs[active_tab].proc.confirm_exit.value_or(0))
+                bool need_confirmation = 0;
+                for (const auto &tab : tabs)
+                {
+                    if (tab.proc.confirm_exit.value_or(0))
+                    {
+                        need_confirmation = 1;
+                        break;
+                    }
+                }
+
+                if (need_confirmation)
                     ImGui::OpenPopup("confirm_exit_modal");
                 else
                     Exit();

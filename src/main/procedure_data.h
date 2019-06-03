@@ -22,7 +22,7 @@ namespace Data
         Reflect(Procedure)
         (
             (std::string)(name),
-            (int)(current_step_index)(=0),
+            (int)(current_step)(=0),
             (std::optional<bool>)(confirm_exit),
             (std::vector<ProcedureStep>)(steps),
         )

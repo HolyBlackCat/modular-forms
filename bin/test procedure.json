@@ -1,6 +1,6 @@
 {
     "name" : "Название процедуры",
-    "current_step_index" : 0,
+    "current_step" : 0,
     "confirm_exit" : false,
     "steps" : [
         {

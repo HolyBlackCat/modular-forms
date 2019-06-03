@@ -7,8 +7,53 @@
 #include "main/options.h"
 #include "main/procedure_data.h"
 
+//{ Pull some internal ImGui functions.
+// ImGui doesn't expose 'disable interactions' feature in the public headers, so we copy some declarations from an internal header.
+
+typedef int ImGuiItemFlags;
+
+enum ImGuiItemFlags_
+{
+    ImGuiItemFlags_NoTabStop                = 1 << 0,  // false
+    ImGuiItemFlags_ButtonRepeat             = 1 << 1,  // false    // Button() will return true multiple times based on io.KeyRepeatDelay and io.KeyRepeatRate settings.
+    ImGuiItemFlags_Disabled                 = 1 << 2,  // false    // [BETA] Disable interactions but doesn't affect visuals yet. See github.com/ocornut/imgui/issues/211
+    ImGuiItemFlags_NoNav                    = 1 << 3,  // false
+    ImGuiItemFlags_NoNavDefaultFocus        = 1 << 4,  // false
+    ImGuiItemFlags_SelectableDontClosePopup = 1 << 5,  // false    // MenuItem/Selectable() automatically closes current Popup window
+    ImGuiItemFlags_Default_                 = 0
+};
+
+namespace ImGui
+{
+
+    IMGUI_API void          PushItemFlag(ImGuiItemFlags option, bool enabled);
+    IMGUI_API void          PopItemFlag();
+}
+//}
+
 namespace Widgets
 {
+    class InteractionGuard
+    {
+      public:
+        enum Mode {normal, visuals_only};
+
+        InteractionGuard(bool widget_active, Mode mode = normal)
+        {
+            ImGui::PushItemFlag(ImGuiItemFlags_Disabled, !widget_active && mode != visuals_only);
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, widget_active ? 1 : 0.5);
+        }
+
+        ~InteractionGuard()
+        {
+            ImGui::PopStyleVar();
+            ImGui::PopItemFlag();
+        }
+
+        InteractionGuard(const InteractionGuard &) = delete;
+        InteractionGuard &operator=(const InteractionGuard &) = delete;
+    };
+
     struct Text : Widgets::WidgetBase<Text>
     {
         inline static constexpr const char *internal_name = "text";
@@ -99,6 +144,8 @@ namespace Widgets
 
             int cur_y = ImGui::GetCursorPosY();
 
+            InteractionGuard interaction_guard(allow_modification);
+
             int elem_index = 0;
             for (int i = 0; i < columns; i++)
             {
@@ -184,6 +231,8 @@ namespace Widgets
 
             int cur_y = ImGui::GetCursorPosY();
 
+            InteractionGuard interaction_guard(allow_modification);
+
             int elem_index = 0;
             for (int i = 0; i < columns; i++)
             {
@@ -268,6 +317,8 @@ namespace Widgets
 
             int cur_y = ImGui::GetCursorPosY();
 
+            InteractionGuard interaction_guard(allow_modification);
+
             int elem_index = 0;
             for (int i = 0; i < columns; i++)
             {
@@ -317,6 +368,8 @@ namespace Widgets
 
         void Display(int index, bool allow_modification) override
         {
+            InteractionGuard interaction_guard(allow_modification, InteractionGuard::visuals_only);
+
             bool use_inline_label = inline_label ? *inline_label : 1;
 
             if (!use_inline_label)
