@@ -25,5 +25,6 @@
 #include "utils/memory_file.h"
 #include "utils/meta.h"
 #include "utils/poly_storage.h"
+#include "utils/shared_library.h"
 #include "utils/strings.h"
 #include "utils/unicode.h"

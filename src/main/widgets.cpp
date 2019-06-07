@@ -1,6 +1,9 @@
 #include <string>
+#include <iostream>
 
 #include <imgui.h>
+
+#include "interface/messagebox.h"
 
 #include "main/images.h"
 #include "main/gui_strings.h"
@@ -102,9 +105,20 @@ namespace Widgets
     {
         inline static constexpr const char *internal_name = "button_list";
 
+        struct Function
+        {
+            Reflect(Function)
+            (
+                (std::string)(library_id,func_id),
+            )
+
+            Data::external_func_ptr_t ptr = 0;
+        };
+
         ReflectStruct(Button, (
             (std::string)(label),
             (std::optional<std::string>)(tooltip),
+            (std::optional<Function>)(function),
         ))
 
         Reflect(ButtonList)
@@ -115,10 +129,29 @@ namespace Widgets
 
         int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the button width on the first `Display()` call. Otherwise it stays at 0.
 
-        void Init(const Data::Procedure &) override
+        void Init(const Data::Procedure &proc) override
         {
             if (buttons.size() == 0)
                 Program::Error("A button list must contain at least one button.");
+
+            for (Button &button : buttons)
+            {
+                if (!button.function)
+                    continue;
+
+                if (!proc.libraries)
+                    Program::Error("At least one button needs a function from a shared library, but no shared library list is provided.");
+
+                auto lib_it = std::find_if(proc.libraries->begin(), proc.libraries->end(), [&](const Data::Library &lib){return lib.id == button.function->library_id;});
+                if (lib_it == proc.libraries->end())
+                    Program::Error("Shared library with id `", button.function->library_id, "` not found in the list of shared libraries.");
+
+                auto func_it = std::find_if(lib_it->functions.begin(), lib_it->functions.end(), [&](const Data::LibraryFunc &func){return func.id == button.function->func_id;});
+                if (func_it == lib_it->functions.end())
+                    Program::Error("Function with id `", button.function->func_id, "` not found in shared library `", button.function->library_id, "`.");
+
+                button.function->ptr = func_it->ptr;
+            }
 
             // We can't calculate proper width here, as fonts don't seem to be loaded this early.
             if (packed && *packed)
@@ -144,8 +177,6 @@ namespace Widgets
 
             int cur_y = ImGui::GetCursorPosY();
 
-            InteractionGuard interaction_guard(allow_modification);
-
             int elem_index = 0;
             for (int i = 0; i < columns; i++)
             {
@@ -156,9 +187,17 @@ namespace Widgets
 
                     const auto &button = buttons[elem_index];
 
-                    if (ImGui::Button(Str(Data::EscapeStringForWidgetName(button.label), "###", index, ":", elem_index).c_str(), fvec2(size_x,0)) && allow_modification)
-                    {
-                        // Do something
+                    bool has_function = bool(button.function && button.function->ptr);
+
+                    { // Display button.
+                        InteractionGuard interaction_guard(allow_modification && has_function);
+
+                        if (ImGui::Button(Str(Data::EscapeStringForWidgetName(button.label), "###", index, ":", elem_index).c_str(), fvec2(size_x,0)) && allow_modification && has_function)
+                        {
+                            const char *error_message = button.function->ptr();
+                            if (error_message)
+                                Interface::MessageBox(Interface::MessageBoxType::warning, "Error", error_message);
+                        }
                     }
 
                     if (button.tooltip && ImGui::IsItemHovered())

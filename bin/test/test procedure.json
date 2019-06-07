@@ -2,6 +2,27 @@
     "name" : "Название процедуры",
     "current_step" : 0,
     "confirm_exit" : false,
+    "libraries" : [
+        {
+            "id" : "main_lib",
+            "file" : "a",
+            "functions" : [
+                {
+                    "id" : "func1",
+                    "name" : "foo",
+                },
+                {
+                    "id" : "func2",
+                    "name" : "bar",
+                },
+                {
+                    "id" : "func3",
+                    "name" : "baz",
+                    "optional" : true,
+                },
+            ],
+        },
+    ],
     "steps" : [
         {
             "name" : "Альфа",
@@ -31,8 +52,28 @@
                     "type" : "button_list",
                     "data" : {
                         "buttons" : [
-                            {"label" : "Кнопка 1", "tooltip" : "Подсказка"},
-                            {"label" : "Кнопка 2"},
+                            {
+                                "label" : "Кнопка 1",
+                                "tooltip" : "Подсказка",
+                                "function" : {
+                                    "library_id" : "main_lib",
+                                    "func_id" : "func1",
+                                },
+                            },
+                            {
+                                "label" : "Кнопка 2",
+                                "function" : {
+                                    "library_id" : "main_lib",
+                                    "func_id" : "func2",
+                                },
+                            },
+                            {
+                                "label" : "Кнопка 3",
+                                "function" : {
+                                    "library_id" : "main_lib",
+                                    "func_id" : "func3",
+                                },
+                            },
                         ],
                     },
                 },

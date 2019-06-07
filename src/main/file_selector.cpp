@@ -226,7 +226,7 @@ void GuiElements::FileSelector::Display()
                         {
                             ImGui::CloseCurrentPopup();
                             is_done = 1;
-                            result = fs::weakly_canonical(it.path);
+                            result = fs::weakly_canonical(state.current_path / it.path);
                         }
                     }
                 }

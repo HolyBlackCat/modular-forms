@@ -61,6 +61,7 @@ struct StateMain : State
 
         try
         {
+            // Validate path.
             fs::file_status status = fs::status(path);
             if (!fs::exists(status))
                 Program::Error("File doesn't exist.");
@@ -71,23 +72,50 @@ struct StateMain : State
 
             Tab new_tab;
 
+            // Save file path.
             new_tab.path = path;
             new_tab.RegeneratePrettyName();
 
+            // Parse JSON.
             Json json(MemoryFile(path.string()).string(), 64);
             new_tab.proc = Widgets::ReflectedObjectFromJson<Data::Procedure>(json.GetView());
 
-            if (path.has_parent_path())
-                new_tab.proc.base_dir = path.parent_path().generic_string() + '/';
-
-            Widgets::InitializeWidgetsRecursively(new_tab.proc, new_tab.proc);
-
+            // Validate JSON data.
             if (new_tab.proc.steps.size() < 1)
                 Program::Error("The procedure must have at least one step.");
             if (new_tab.proc.current_step < 0 || new_tab.proc.current_step >= int(new_tab.proc.steps.size()))
                 Program::Error("Current step index is out of range.");
 
+            // Get parent directory for the file.
+            if (path.has_parent_path())
+                new_tab.proc.base_dir = path.parent_path().generic_string() + '/';
+
+            // Load dynamic libraries.
+            if (new_tab.proc.libraries)
+            {
+                for (Data::Library &lib : *new_tab.proc.libraries)
+                {
+                    constexpr const char *lib_ext = (IsOnPlatform(WINDOWS) ? ".dll" : ".so");
+
+                    lib.library = SharedLibrary(new_tab.proc.base_dir + lib.file + lib_ext);
+
+                    for (Data::LibraryFunc &func : lib.functions)
+                    {
+                        if (func.optional.value_or(false))
+                            func.ptr = reinterpret_cast<Data::external_func_ptr_t>(lib.library.GetFunctionOrNull(func.name));
+                        else
+                            func.ptr = reinterpret_cast<Data::external_func_ptr_t>(lib.library.GetFunction(func.name));
+                    }
+                }
+            }
+
+            // Initialize widgets.
+            // Note that this has to be done after getting the parent directory path and after loading the libraries.
+            Widgets::InitializeWidgetsRecursively(new_tab.proc, new_tab.proc);
+
+            // Set the visible step.
             new_tab.visible_step = new_tab.proc.current_step;
+
 
             tabs.push_back(std::move(new_tab));
         }
