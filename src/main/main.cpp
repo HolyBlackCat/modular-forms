@@ -10,6 +10,8 @@
 
 namespace fs = std::filesystem;
 
+constexpr const char *program_name = "Modular forms";
+
 Interface::Window window;
 Interface::ImGuiController gui_controller;
 Input::Mouse mouse;
@@ -41,6 +43,11 @@ struct StateMain : State
         {
             pretty_name = path.stem().string(); // `stem` means file name without extension.
         }
+
+        bool IsFinished() const
+        {
+            return proc.current_step >= int(proc.steps.size());
+        }
     };
 
     std::vector<Tab> tabs;
@@ -61,6 +68,8 @@ struct StateMain : State
 
         try
         {
+            path = fs::weakly_canonical(path);
+
             // Validate path.
             fs::file_status status = fs::status(path);
             if (!fs::exists(status))
@@ -83,7 +92,7 @@ struct StateMain : State
             // Validate JSON data.
             if (new_tab.proc.steps.size() < 1)
                 Program::Error("The procedure must have at least one step.");
-            if (new_tab.proc.current_step < 0 || new_tab.proc.current_step >= int(new_tab.proc.steps.size()))
+            if (new_tab.proc.current_step < 0 || new_tab.proc.current_step > int(new_tab.proc.steps.size())) // Sic.
                 Program::Error("Current step index is out of range.");
 
             // Get parent directory for the file.
@@ -114,7 +123,8 @@ struct StateMain : State
             Widgets::InitializeWidgetsRecursively(new_tab.proc, new_tab.proc);
 
             // Set the visible step.
-            new_tab.visible_step = new_tab.proc.current_step;
+            new_tab.visible_step = 0;
+            // new_tab.visible_step = clamp_max(new_tab.proc.current_step, int(new_tab.proc.steps.size())-1);
 
 
             tabs.push_back(std::move(new_tab));
@@ -197,15 +207,18 @@ struct StateMain : State
 
             Tab &tab = tabs[active_tab];
 
+            if (tab.IsFinished())
+                return;
+
             tab.proc.current_step++;
+
+            Widgets::ReflectedObjectToJsonFile(tab.proc, tab.path.string());
+
+            if (tab.IsFinished()) // Sic!
+                return;
+
             tab.visible_step = tab.proc.current_step;
             tab.should_adjust_step_list_scrolling = 1;
-
-            if (tab.proc.current_step >= int(tab.proc.steps.size()))
-            {
-                tab.proc.current_step--;
-                Program::Exit();
-            }
         };
 
         { // Tabs
@@ -231,9 +244,12 @@ struct StateMain : State
 
                     bool keep_tab_open = 1;
 
+                    // The current tab
                     if (ImGui::BeginTabItem(Str(Data::EscapeStringForWidgetName(tab.pretty_name), "###tab:", tab.id).c_str(), &keep_tab_open))
                     {
                         FINALLY( ImGui::EndTabItem(); )
+
+                        window.SetTitle("{} - {} - {}"_format(tab.proc.name, tab.path.string(), program_name));
 
                         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, old_frame_border_size);
                         FINALLY( ImGui::PopStyleVar(); )
@@ -280,7 +296,10 @@ struct StateMain : State
 
                             for (std::size_t i = 0; i < tab.proc.steps.size(); i++)
                             {
-                                if (ImGui::Selectable(Data::EscapeStringForWidgetName(tab.proc.steps[i].name).c_str(), int(i) == tab.visible_step, int(i) > tab.proc.current_step ? ImGuiSelectableFlags_Disabled : 0))
+                                ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(int(i) > tab.proc.current_step ? ImGuiCol_TextDisabled : ImGuiCol_Text));
+                                FINALLY( ImGui::PopStyleColor(); )
+
+                                if (ImGui::Selectable(Data::EscapeStringForWidgetName(tab.proc.steps[i].name).c_str(), int(i) == tab.visible_step))
                                 {
                                     tab.visible_step = i;
                                 }
@@ -319,6 +338,25 @@ struct StateMain : State
                                 else
                                     EndStep();
                             }
+
+                            if (tab.visible_step != tab.proc.current_step)
+                            {
+                                if (tab.IsFinished())
+                                {
+                                    ImGui::TextUnformatted("Процедура завершена.");
+                                }
+                                else
+                                {
+                                    ImGui::TextUnformatted(tab.visible_step < tab.proc.current_step ? "Этот шаг уже завершен." : "Этот шаг еще не начат.");
+                                    ImGui::SameLine();
+                                    if (ImGui::SmallButton("Показать текущий шаг"))
+                                    {
+                                        tab.visible_step = tab.proc.current_step;
+                                        tab.should_adjust_step_list_scrolling = 1;
+                                    }
+                                }
+                            }
+
                         }
 
                         tab.first_tick = 0;
@@ -334,6 +372,8 @@ struct StateMain : State
 
             if (!have_tabs)
             {
+                window.SetTitle(program_name);
+
                 ImGui::Indent();
                 ImGui::TextDisabled("%s", "Нет открытых файлов");
                 ImGui::Unindent();
@@ -367,7 +407,6 @@ struct StateMain : State
         { // Modal: "Are you sure you want to exit?"
             auto Exit = [&]
             {
-                // Data::ReflectedObjectToJsonFile(proc, current_file_name);
                 Program::Exit();
             };
 
@@ -438,6 +477,7 @@ int main(int argc, char **argv)
             window_settings.gl_major = 2;
             window_settings.gl_minor = 1;
             window_settings.gl_profile = Interface::Profile::any;
+            window_settings.vsync = Interface::VSync::disabled;
 
             window = Interface::Window("Modular forms", window_size, Interface::windowed, window_settings);
         }

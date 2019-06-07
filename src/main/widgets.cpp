@@ -371,7 +371,10 @@ namespace Widgets
                     int new_selected = selected;
                     if (ImGui::RadioButton(Str(Data::EscapeStringForWidgetName(radiobutton.label), "###", index, ":", elem_index).c_str(), &new_selected, elem_index+1) && allow_modification)
                     {
-                        selected = new_selected;
+                        if (selected != new_selected)
+                            selected = new_selected;
+                        else
+                            selected = 0;
                     }
 
                     if (radiobutton.tooltip && ImGui::IsItemHovered())
