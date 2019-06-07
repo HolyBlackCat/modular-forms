@@ -284,7 +284,7 @@ struct StateMain : State
 
                             ImGui::EndChildFrame();
 
-                            if (ImGui::Button("Завершить шаг"))
+                            if (tab.visible_step == tab.proc.current_step && ImGui::Button("Завершить шаг"))
                             {
                                 if (current_step.confirm && *current_step.confirm)
                                     need_step_end_confirmation = 1;
