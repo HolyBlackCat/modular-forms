@@ -97,7 +97,7 @@ namespace Interface
       public:
         Window();
         Window(Window &&other) noexcept;
-        Window &operator=(Window &&other) noexcept;
+        Window &operator=(Window other) noexcept;
         ~Window();
 
         Window(std::string title, ivec2 size, FullscreenMode mode = windowed, const WindowSettings &settings = {});

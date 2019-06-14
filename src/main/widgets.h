@@ -38,23 +38,23 @@ namespace Widgets
 
         bool is_reflected = 0;
         const char *internal_name = 0;
-        void (*from_json)(Poly::Param<WidgetBase_Low>, Json::View, std::string);
-        void (*to_json)(Poly::Param<const WidgetBase_Low>, int, int, std::string &);
+        void (*from_json)(Widget &, Json::View, std::string);
+        void (*to_json)(const Widget &, int, int, std::string &);
 
         template <typename T> constexpr void _make()
         {
             is_reflected = Refl::is_reflected<T>;
             internal_name = T::internal_name;
-            from_json = [](Poly::Param<WidgetBase_Low> obj, Json::View view, std::string elem_name)
+            from_json = [](Widget &obj, Json::View view, std::string elem_name)
             {
                 if constexpr (Refl::is_reflected<T>)
-                    obj.template get<T>() = ReflectedObjectFromJson<T>(view[elem_name]);
+                    obj.template derived<T>() = ReflectedObjectFromJson<T>(view[elem_name]);
             };
-            to_json = [](Poly::Param<const WidgetBase_Low> obj, int indent_steps, int indent_step_w, std::string &str)
+            to_json = [](const Widget &obj, int indent_steps, int indent_step_w, std::string &str)
             {
                 if constexpr (Refl::is_reflected<T>)
                 {
-                    ReflectedObjectToJsonLow(obj.template get<T>(), indent_steps, indent_step_w, str);
+                    ReflectedObjectToJsonLow(obj.template derived<T>(), indent_steps, indent_step_w, str);
                 }
                 else
                 {

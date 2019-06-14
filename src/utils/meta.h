@@ -25,11 +25,41 @@ namespace Meta
     template <typename A, typename ...B> using void_type = type<void, A, B...>;
 
 
-    template <typename... Ts>
-    struct overload : Ts... { using Ts::operator()...; };
+    template <typename ...P> struct overload : P... { using P::operator()...; };
+    template <typename ...P> overload(P...) -> overload<P...>;
 
-    template <typename... Ts>
-    overload(Ts...) -> overload<Ts...>;
+
+    template <typename T> struct reset_on_move
+    {
+        T value = {};
+
+        reset_on_move() {}
+        reset_on_move(const T &new_value) : value(new_value) {}
+        reset_on_move(T &&new_value) : value(std::move(new_value)) {}
+        reset_on_move(reset_on_move &&other) noexcept : value(std::exchange(other.value, {})) {}
+        reset_on_move &operator=(reset_on_move other) noexcept
+        {
+            std::swap(value, other.value);
+            return *this;
+        }
+
+        [[nodiscard]]       T &operator*()       {return value;}
+        [[nodiscard]] const T &operator*() const {return value;}
+
+        [[nodiscard]]       T *operator->()       {return &value;}
+        [[nodiscard]] const T *operator->() const {return &value;}
+    };
+
+
+    namespace impl
+    {
+        template <typename A, typename B> struct copy_qualifiers {using type = B;};
+        template <typename A, typename B> struct copy_qualifiers<const          A, B> {using type = const          B;};
+        template <typename A, typename B> struct copy_qualifiers<      volatile A, B> {using type =       volatile B;};
+        template <typename A, typename B> struct copy_qualifiers<const volatile A, B> {using type = const volatile B;};
+    }
+
+    template <typename A, typename B> using copy_qualifiers = typename impl::copy_qualifiers<A, B>::type;
 
 
     namespace impl

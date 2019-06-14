@@ -179,9 +179,9 @@ namespace Graphics
         }
 
         VertexBuffer(VertexBuffer &&other) noexcept : data(std::exchange(other.data, {})) {}
-        VertexBuffer &operator=(VertexBuffer &&other) noexcept
+        VertexBuffer &operator=(VertexBuffer other) noexcept // Note the pass by value to utilize copy&swap idiom.
         {
-            data = std::exchange(other.data, {});
+            std::swap(data, other.data);
             return *this;
         }
 
@@ -263,20 +263,20 @@ namespace Graphics
             glBufferSubData(GL_ARRAY_BUFFER, offset, bytes, source);
         }
 
-        void Draw(DrawMode p, int from, int count) // Binds for drawing.
+        void Draw(DrawMode p, int offset, int count) const // Binds for drawing.
         {
             static_assert(is_reflected, "Element type of this buffer is not reflected, unable to draw.");
             DebugAssert("Attempt to use a null vertex buffer.", *this);
             if (!*this)
                 return;
             BindDraw();
-            glDrawArrays(p, from, count);
+            glDrawArrays(p, offset, count);
         }
-        void Draw(DrawMode p, int count) // Binds for drawing.
+        void Draw(DrawMode p, int count) const // Binds for drawing.
         {
             Draw(p, 0, count);
         }
-        void Draw(DrawMode p) // Binds for drawing.
+        void Draw(DrawMode p) const // Binds for drawing.
         {
             Draw(p, 0, Size());
         }
