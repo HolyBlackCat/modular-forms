@@ -266,6 +266,16 @@ struct StateMain : State
 
                     ImGui::Separator();
 
+                    if (ImGui::MenuItem("Сохранить", nullptr, nullptr, HaveActiveTab() && tabs[active_tab].IsTemplate()))
+                    {
+                        Tab_Save();
+                    }
+
+                    if (ImGui::IsItemHovered() && HaveActiveTab() && !tabs[active_tab].IsTemplate())
+                    {
+                        ImGui::SetTooltip("%s", "Файлы отчетов сохраняются автоматически.");
+                    }
+
                     if (ImGui::MenuItem("Сохранить как", nullptr, nullptr, HaveActiveTab()))
                     {
                         bool got_path = 0;
@@ -409,7 +419,7 @@ struct StateMain : State
 
                             for (std::size_t i = 0; i < tab.proc.steps.size(); i++)
                             {
-                                ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(int(i) > tab.proc.current_step || tab.IsTemplate() ? ImGuiCol_TextDisabled : ImGuiCol_Text));
+                                ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(int(i) > tab.proc.current_step && !tab.IsTemplate() ? ImGuiCol_TextDisabled : ImGuiCol_Text));
                                 FINALLY( ImGui::PopStyleColor(); )
 
                                 if (ImGui::Selectable(Data::EscapeStringForWidgetName(tab.proc.steps[i].name).c_str(), int(i) == tab.visible_step))
@@ -432,13 +442,18 @@ struct StateMain : State
                         { // Current step
                             ImGui::TextUnformatted(current_step.name.c_str());
 
+                            // Otherwise the right side of the frame is slightly clipped.
+                            ImGui::PushClipRect(ivec2(0), window.Size(), false);
+                            FINALLY( ImGui::PopClipRect(); )
+
                             int bottom_panel_h = ImGui::GetFrameHeightWithSpacing();
-                            ImGui::BeginChildFrame(ImGui::GetID(Str("widgets:", tab.proc.current_step).c_str()), fvec2(0, -bottom_panel_h), 1);
+                            // ImGui::BeginChildFrame(ImGui::GetID(Str("widgets:", tab.proc.current_step).c_str()), fvec2(0, -bottom_panel_h), 1);
+                            ImGui::BeginChildFrame(ImGui::GetID(Str("widgets:", tab.proc.current_step).c_str()), ivec2(ImGui::GetContentRegionAvail()) + ivec2(ImGui::GetStyle().WindowPadding.x, -bottom_panel_h), 1);
 
                             int widget_index = 0;
                             for (Widgets::Widget &widget : current_step.widgets)
                             {
-                                widget->Display(widget_index++, tab.proc.current_step == tab.visible_step);
+                                widget->Display(widget_index++, tab.proc.current_step == tab.visible_step || tab.IsTemplate());
                                 ImGui::Spacing(); // The gui looks better with spacing after each widget including the last one.
                             }
 
