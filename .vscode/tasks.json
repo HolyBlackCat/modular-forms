@@ -14,15 +14,15 @@
         {
             "label": "Build & Run",
             "type": "shell",
-            "windows": {"command": "mingw32-make -j4 && cd bin && modular-forms.exe \"test/test procedure.json\""},
-            "linux": {"command": "make -j4 && cd bin && ./modular-forms \"test/test procedure.json\""},
+            "windows": {"command": "mingw32-make -j4 && cd bin && modular-forms.exe \"test/test.rep\""},
+            "linux": {"command": "make -j4 && cd bin && ./modular-forms \"test/test.rep\""},
             "presentation": {"echo": true, "reveal": "always", "focus": false, "panel": "shared", "showReuseMessage": false, "clear": true},
         },
         {
             "label": "Run",
             "type": "shell",
-            "windows": {"command": "cd bin && modular-forms.exe \"test/test procedure.json\""},
-            "linux": {"command": "cd bin && ./modular-forms \"test/test procedure.json\""},
+            "windows": {"command": "cd bin && modular-forms.exe \"test/test.rep\""},
+            "linux": {"command": "cd bin && ./modular-forms \"test/test.rep\""},
             "presentation": {"echo": true, "reveal": "always", "focus": false, "panel": "shared", "showReuseMessage": false, "clear": true},
         },
         {

@@ -1,6 +1,9 @@
 #pragma once
 
+#include <filesystem>
 #include <string>
+
+namespace fs = std::filesystem;
 
 #include "program/errors.h"
 #include "reflection/complete.h"
@@ -108,6 +111,10 @@ namespace Widgets
         else if constexpr (std::is_same_v<T, std::string>)
         {
             return view.GetString();
+        }
+        else if constexpr (std::is_same_v<T, fs::path>)
+        {
+            return ReflectedObjectFromJson<std::string>(view);
         }
         else if constexpr (std::is_integral_v<T>)
         {
@@ -275,6 +282,10 @@ namespace Widgets
                 }
             }
             output += '"';
+        }
+        else if constexpr (std::is_same_v<T, fs::path>)
+        {
+            ReflectedObjectToJsonLow(object.string(), indent_steps, indent_step_w, output);
         }
         else if constexpr (std::is_integral_v<T>)
         {

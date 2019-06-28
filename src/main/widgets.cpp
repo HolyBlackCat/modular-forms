@@ -456,7 +456,7 @@ namespace Widgets
                 Program::Error("An image list must contain at least one image.");
 
             for (auto &image : images)
-                image.data = Data::Image::Load(proc.base_dir + image.file_name);
+                image.data = Data::Image::Load((proc.resource_dir / image.file_name).string());
         }
 
         void Display(int index, bool allow_modification) override

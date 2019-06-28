@@ -5,7 +5,7 @@
     "libraries" : [
         {
             "id" : "main_lib",
-            "file" : "a",
+            "file" : "test/a",
             "functions" : [
                 {"id" : "func1", "name" : "foo"},
                 {"id" : "func2", "name" : "bar"},
@@ -29,8 +29,8 @@
                     "type" : "image_list",
                     "data" : {
                         "images" : [
-                            {"tooltip" : "Картинка 1", "file_name" : "test_pic.jpg"},
-                            {"tooltip" : "Картинка 2", "file_name" : "test_pic_2.png"},
+                            {"tooltip" : "Картинка 1", "file_name" : "test/test_pic.jpg"},
+                            {"tooltip" : "Картинка 2", "file_name" : "test/test_pic_2.png"},
                         ],
                         "columns" : 4,
                     },

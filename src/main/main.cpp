@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include "main/common.h"
-#include "main/file_selector.h"
+#include "main/file_dialogs.h"
 #include "main/gui_strings.h"
 #include "main/image_viewer.h"
 #include "main/options.h"
@@ -15,6 +15,8 @@ constexpr const char *program_name = "Modular forms";
 Interface::Window window;
 Interface::ImGuiController gui_controller;
 Input::Mouse mouse;
+
+fs::path program_directory;
 
 struct State
 {
@@ -30,7 +32,7 @@ struct StateMain : State
     {
         Data::Procedure proc;
         std::string pretty_name;
-        fs::path path;
+        fs::path path; // Don't modify this directly. Use `AssignPath()`.
         bool first_tick = 1;
 
         int visible_step = 0;
@@ -39,14 +41,20 @@ struct StateMain : State
         inline static unsigned int id_counter = 1;
         int id = id_counter++;
 
-        void RegeneratePrettyName()
+        void AssignPath(fs::path new_path)
         {
+            path = std::move(new_path);
             pretty_name = path.stem().string(); // `stem` means file name without extension.
         }
 
         bool IsFinished() const
         {
             return proc.current_step >= int(proc.steps.size());
+        }
+
+        bool IsTemplate() const
+        {
+            return proc.current_step == -1;
         }
     };
 
@@ -56,12 +64,95 @@ struct StateMain : State
     bool HaveActiveTab() const {return active_tab >= 0 && active_tab < int(tabs.size());}
 
     GuiElements::ImageViewer image_viewer;
-    GuiElements::FileSelector file_selector;
-
 
     StateMain() {}
 
-    void Load(fs::path path)
+    static Tab CreateTab(const char *json_data, bool expect_template, fs::path path)
+    {
+        Tab new_tab;
+
+        // Parse JSON.
+        Json json(json_data, 64);
+        new_tab.proc = Widgets::ReflectedObjectFromJson<Data::Procedure>(json.GetView());
+
+        // Validate JSON data.
+        if (new_tab.proc.steps.size() < 1)
+            Program::Error("The procedure must have at least one step.");
+        if (expect_template)
+        {
+            if (new_tab.proc.current_step != -1)
+                Program::Error("Invalid current step index.");
+        }
+        else
+        {
+            if (new_tab.proc.current_step < 0 || new_tab.proc.current_step > int(new_tab.proc.steps.size())) // Sic.
+                Program::Error("Current step index is out of range.");
+        }
+
+        // Set resource directory.
+        new_tab.proc.resource_dir = program_directory / Options::template_dir;
+
+        // Load dynamic libraries.
+        if (new_tab.proc.libraries)
+        {
+            for (Data::Library &lib : *new_tab.proc.libraries)
+            {
+                constexpr const char *lib_ext = (IsOnPlatform(WINDOWS) ? ".dll" : ".so");
+
+                lib.library = SharedLibrary((new_tab.proc.resource_dir / (lib.file + lib_ext)).string());
+
+                for (Data::LibraryFunc &func : lib.functions)
+                {
+                    if (func.optional.value_or(false))
+                        func.ptr = reinterpret_cast<Data::external_func_ptr_t>(lib.library.GetFunctionOrNull(func.name));
+                    else
+                        func.ptr = reinterpret_cast<Data::external_func_ptr_t>(lib.library.GetFunction(func.name));
+                }
+            }
+        }
+
+        // Initialize widgets.
+        // Note that this has to be done after setting the resource directory.
+        Widgets::InitializeWidgetsRecursively(new_tab.proc, new_tab.proc);
+
+        // Set the visible step.
+        new_tab.visible_step = 0;
+        // new_tab.visible_step = clamp_max(new_tab.proc.current_step, int(new_tab.proc.steps.size())-1);
+
+        // Save path.
+        new_tab.AssignPath(path);
+
+        return new_tab;
+    }
+
+    void Tab_MakeReportFromTemplate(fs::path template_path, fs::path report_path)
+    {
+        if (template_path.empty() || report_path.empty())
+            return;
+
+        try
+        {
+            template_path = fs::weakly_canonical(template_path);
+
+            // Validate template_path.
+            fs::file_status status = fs::status(template_path);
+            if (!fs::exists(status))
+                Program::Error("File doesn't exist.");
+            if (!fs::is_regular_file(status))
+                Program::Error("Not a regular file.");
+            if (template_path.extension() != Options::template_extension)
+                Program::Error("Invalid extension, expected `", Options::template_extension, "`.");
+
+            Tab &new_tab = tabs.emplace_back(CreateTab(MemoryFile(template_path.string()).string(), 1, report_path));
+            new_tab.proc.current_step = 0;
+        }
+        catch (std::exception &e)
+        {
+            Interface::MessageBox(Interface::MessageBoxType::warning, "Error", Str("Can't load `", template_path.string(), "`:\n", e.what()));
+        }
+    }
+
+    void Tab_LoadReportOrTemplate(fs::path path)
     {
         if (path.empty())
             return;
@@ -76,56 +167,12 @@ struct StateMain : State
                 Program::Error("File doesn't exist.");
             if (!fs::is_regular_file(status))
                 Program::Error("Not a regular file.");
-            if (path.extension() != Options::extension)
-                Program::Error("Invalid extension, expected `", Options::extension, "`.");
+            if (path.extension() != Options::report_extension && path.extension() != Options::template_extension)
+                Program::Error("Invalid extension, expected `", Options::report_extension, "` or `", Options::template_extension, "`.");
 
-            Tab new_tab;
+            Tab new_tab = CreateTab(MemoryFile(path.string()).string(), path.extension() == Options::template_extension, path);
 
-            // Save file path.
-            new_tab.path = path;
-            new_tab.RegeneratePrettyName();
-
-            // Parse JSON.
-            Json json(MemoryFile(path.string()).string(), 64);
-            new_tab.proc = Widgets::ReflectedObjectFromJson<Data::Procedure>(json.GetView());
-
-            // Validate JSON data.
-            if (new_tab.proc.steps.size() < 1)
-                Program::Error("The procedure must have at least one step.");
-            if (new_tab.proc.current_step < 0 || new_tab.proc.current_step > int(new_tab.proc.steps.size())) // Sic.
-                Program::Error("Current step index is out of range.");
-
-            // Get parent directory for the file.
-            if (path.has_parent_path())
-                new_tab.proc.base_dir = path.parent_path().generic_string() + '/';
-
-            // Load dynamic libraries.
-            if (new_tab.proc.libraries)
-            {
-                for (Data::Library &lib : *new_tab.proc.libraries)
-                {
-                    constexpr const char *lib_ext = (IsOnPlatform(WINDOWS) ? ".dll" : ".so");
-
-                    lib.library = SharedLibrary(new_tab.proc.base_dir + lib.file + lib_ext);
-
-                    for (Data::LibraryFunc &func : lib.functions)
-                    {
-                        if (func.optional.value_or(false))
-                            func.ptr = reinterpret_cast<Data::external_func_ptr_t>(lib.library.GetFunctionOrNull(func.name));
-                        else
-                            func.ptr = reinterpret_cast<Data::external_func_ptr_t>(lib.library.GetFunction(func.name));
-                    }
-                }
-            }
-
-            // Initialize widgets.
-            // Note that this has to be done after getting the parent directory path and after loading the libraries.
-            Widgets::InitializeWidgetsRecursively(new_tab.proc, new_tab.proc);
-
-            // Set the visible step.
-            new_tab.visible_step = 0;
-            // new_tab.visible_step = clamp_max(new_tab.proc.current_step, int(new_tab.proc.steps.size())-1);
-
+            new_tab.AssignPath(path);
 
             tabs.push_back(std::move(new_tab));
         }
@@ -135,23 +182,27 @@ struct StateMain : State
         }
     }
 
+    bool Tab_Save() // Returns `true` on success.
+    {
+        if (!HaveActiveTab())
+            return 0;
+
+        try
+        {
+            Widgets::ReflectedObjectToJsonFile(tabs[active_tab].proc, tabs[active_tab].path.string());
+            return 1;
+        }
+        catch (std::exception &e)
+        {
+            Interface::MessageBox(Interface::MessageBoxType::warning, "Error", "Unable to save `{}`:\n{}"_format(tabs[active_tab].path.string(), e.what()));
+            return 0;
+        }
+    }
+
     void Tick() override
     {
         for (const std::string &new_file : window.DroppedFiles())
-            Load(new_file);
-
-        if (file_selector.is_done)
-        {
-            file_selector.is_done = 0;
-            switch (file_selector.CurrentMode())
-            {
-              case GuiElements::FileSelector::Mode::open:
-                Load(file_selector.result);
-                break;
-              default:
-                break;
-            }
-        }
+            Tab_LoadReportOrTemplate(new_file);
 
         constexpr int window_flags =
             ImGuiWindowFlags_NoResize |
@@ -184,8 +235,66 @@ struct StateMain : State
             {
                 if (ImGui::BeginMenu("Файл"))
                 {
-                    if (ImGui::MenuItem("Открыть"))
-                        file_selector.Open(GuiElements::FileSelector::Mode::open, {".json"});
+                    if (ImGui::MenuItem("Новый отчет на основе шаблона"))
+                    {
+                        if (auto result_template = FileDialogs::OpenTemplate())
+                            if (auto result_report = FileDialogs::SaveReport())
+                                Tab_MakeReportFromTemplate(*result_template, *result_report);
+                    }
+
+                    if (ImGui::MenuItem("Новый шаблон", nullptr, nullptr, 0)) {}
+
+                    ImGui::Separator();
+
+                    if (ImGui::MenuItem("Открыть отчет"))
+                    {
+                        if (auto result = FileDialogs::OpenReport())
+                            Tab_LoadReportOrTemplate(*result);
+                    }
+
+                    if (ImGui::MenuItem("Открыть шаблон"))
+                    {
+                        if (auto result = FileDialogs::OpenTemplate())
+                            Tab_LoadReportOrTemplate(*result);
+                    }
+
+                    ImGui::Separator();
+
+                    if (ImGui::MenuItem("Сохранить", nullptr, nullptr, HaveActiveTab()))
+                    {
+                        Tab_Save();
+                    }
+
+                    if (ImGui::MenuItem("Сохранить как", nullptr, nullptr, HaveActiveTab()))
+                    {
+                        bool got_path = 0;
+                        fs::path old_path;
+
+                        if (tabs[active_tab].IsTemplate())
+                        {
+                            if (auto result = FileDialogs::SaveTemplate())
+                            {
+                                old_path = tabs[active_tab].path;
+                                tabs[active_tab].AssignPath(std::move(*result));
+                                got_path = 1;
+                            }
+                        }
+                        else
+                        {
+                            if (auto result = FileDialogs::SaveReport())
+                            {
+                                old_path = tabs[active_tab].path;
+                                tabs[active_tab].AssignPath(std::move(*result));
+                                got_path = 1;
+                            }
+                        }
+
+                        bool ok = Tab_Save();
+                        if (!ok)
+                            tabs[active_tab].AssignPath(std::move(old_path));
+                    }
+
+                    ImGui::Separator();
 
                     if (ImGui::MenuItem("Выйти"))
                         exit_requested = 1;
@@ -249,7 +358,7 @@ struct StateMain : State
                     {
                         FINALLY( ImGui::EndTabItem(); )
 
-                        window.SetTitle("{} - {} - {}"_format(tab.proc.name, tab.path.string(), program_name));
+                        window.SetTitle("{}{} - {} - {}"_format(tab.proc.name, tab.proc.IsTemplate() ? " [шаблон]" : "", tab.path.string(), program_name));
 
                         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, old_frame_border_size);
                         FINALLY( ImGui::PopStyleVar(); )
@@ -381,7 +490,6 @@ struct StateMain : State
         }
 
         image_viewer.Display();
-        file_selector.Display();
 
         { // Modal: "Are you sure you want to end the step?"
             if (need_step_end_confirmation)
@@ -460,12 +568,11 @@ struct StateMain : State
 
 int main(int argc, char **argv)
 {
-    std::string asset_dir;
     if (argc > 0)
     {
         fs::path parent_path = fs::path(argv[0]).parent_path();
         if (!parent_path.empty())
-            asset_dir = parent_path.generic_string() + '/';
+            program_directory = parent_path.generic_string();
     }
 
     { // Initialize
@@ -497,10 +604,10 @@ int main(int argc, char **argv)
             ImVector<ImWchar> glyph_ranges;
             glyph_ranges_builder.BuildRanges(&glyph_ranges);
 
-            std::string font_filename = asset_dir + "assets/Roboto-Regular.ttf";
+            std::string font_filename = (program_directory / fs::path("assets/Roboto-Regular.ttf")).string();
             if (!std::filesystem::exists(font_filename))
                 Program::Error("Font file `", font_filename, "` is missing.");
-            if (!io.Fonts->AddFontFromFileTTF(font_filename.c_str(), 18.0f, 0, glyph_ranges.begin()))
+            if (!io.Fonts->AddFontFromFileTTF(font_filename.c_str(), 16.0f, 0, glyph_ranges.begin()))
                 Program::Error("Unable to load font `", font_filename, "`.");
 
             ImGuiFreeType::BuildFontAtlas(io.Fonts, ImGuiFreeType::MonoHinting);
@@ -520,7 +627,7 @@ int main(int argc, char **argv)
     if (argc > 1)
     {
         for (int i = 1; i < argc; i++)
-            new_state.Load(argv[i]);
+            new_state.Tab_LoadReportOrTemplate(argv[i]);
     }
 
 

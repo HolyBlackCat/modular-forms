@@ -53,12 +53,17 @@ namespace Data
         Reflect(Procedure)
         (
             (std::string)(name),
-            (int)(current_step)(=0),
+            (int)(current_step)(=-1),
             (std::optional<bool>)(confirm_exit),
             (std::optional<std::vector<Library>>)(libraries),
             (std::vector<ProcedureStep>)(steps),
         )
 
-        std::string base_dir;
+        fs::path resource_dir;
+
+        bool IsTemplate() const
+        {
+            return current_step == -1;
+        }
     };
 }

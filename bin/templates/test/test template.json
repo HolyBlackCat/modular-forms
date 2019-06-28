@@ -1,0 +1,502 @@
+{
+    "name" : "Название процедуры",
+    "current_step" : -1,
+    "confirm_exit" : false,
+    "libraries" : [
+        {
+            "id" : "main_lib",
+            "file" : "test/a",
+            "functions" : [
+                {"id" : "func1", "name" : "foo"},
+                {"id" : "func2", "name" : "bar"},
+                {"id" : "func3", "name" : "baz", "optional" : true},
+            ],
+        },
+    ],
+    "steps" : [
+        {
+            "name" : "Альфа",
+            "confirm" : true,
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Привет, мир!\nHello, world!\nПроверяем перенос строк. Проверяем перенос строк. Проверяем перенос строк. Проверяем перенос строк. Проверяем перенос строк. Проверяем перенос строк."},
+                },
+                {
+                    "type" : "line",
+                },
+                {
+                    "type" : "image_list",
+                    "data" : {
+                        "images" : [
+                            {"tooltip" : "Картинка 1", "file_name" : "test/test_pic.jpg"},
+                            {"tooltip" : "Картинка 2", "file_name" : "test/test_pic_2.png"},
+                        ],
+                        "columns" : 4,
+                    },
+                },
+                {
+                    "type" : "line",
+                },
+                {
+                    "type" : "button_list",
+                    "data" : {
+                        "buttons" : [
+                            {
+                                "label" : "Кнопка 1",
+                                "tooltip" : "Подсказка",
+                                "function" : {"library_id" : "main_lib", "func_id" : "func1"},
+                            },
+                            {
+                                "label" : "Кнопка 2",
+                                "function" : {"library_id" : "main_lib", "func_id" : "func2"},
+                            },
+                            {
+                                "label" : "Кнопка 3",
+                                "function" : {"library_id" : "main_lib", "func_id" : "func3"},
+                            },
+                        ],
+                    },
+                },
+                {
+                    "type" : "checkbox_list",
+                    "data" : {
+                        "checkboxes" : [
+                            {"label" : "Галочка 1", "state" : false, "tooltip" : "Подсказка"},
+                            {"label" : "Галочка 2 (включена по умолчанию)", "state" : true},
+                        ],
+                    },
+                },
+                {
+                    "type" : "text_input",
+                    "data" : {"label" : "Текстовое поле", "value" : "раз"},
+                },
+                {
+                    "type" : "text_input",
+                    "data" : {"label" : "Текстовое поле с очень длинным названием", "value" : "два", "inline_label" : false},
+                },
+                {
+                    "type" : "spacing",
+                },
+                {
+                    "type" : "radiobutton_list",
+                    "data" : {
+                        "radiobuttons" : [
+                            {"label" : "Кружок 1", "tooltip" : "Подсказка"},
+                            {"label" : "Кружок 2"},
+                        ],
+                        "selected" : 0,
+                    },
+                },
+                {
+                    "type" : "spacing",
+                },
+                {
+                    "type" : "radiobutton_list",
+                    "data" : {
+                        "radiobuttons" : [
+                            {"label" : "Еще кружок 1 (выбран по умолчанию)"},
+                            {"label" : "Еще кружок 2"},
+                        ],
+                        "selected" : 1,
+                    },
+                },
+                {
+                    "type" : "line",
+                },
+                {
+                    "type" : "button_list",
+                    "data" : {
+                        "buttons" : [
+                            {
+                                "label" : "Набор",
+                            },
+                            {
+                                "label" : "плотно",
+                            },
+                            {
+                                "label" : "упакованных",
+                            },
+                            {
+                                "label" : "кнопок",
+                            },
+                            {
+                                "label" : "кнопок",
+                            },
+                            {
+                                "label" : "кнопок",
+                            },
+                            {
+                                "label" : "кнопок",
+                            },
+                            {
+                                "label" : "кнопок",
+                            },
+                            {
+                                "label" : "кнопок",
+                            },
+                            {
+                                "label" : "кнопок",
+                            },
+                            {
+                                "label" : "кнопок",
+                            },
+                        ],
+                        "packed" : true,
+                    },
+                },
+                {
+                    "type" : "line",
+                },
+                {
+                    "type" : "checkbox_list",
+                    "data" : {
+                        "checkboxes" : [
+                            {"label" : "Набор", "state" : false},
+                            {"label" : "плотно", "state" : false},
+                            {"label" : "упакованных", "state" : false},
+                            {"label" : "галочек", "state" : false},
+                            {"label" : "галочек", "state" : false},
+                            {"label" : "галочек", "state" : false},
+                            {"label" : "галочек", "state" : false},
+                            {"label" : "галочек", "state" : false},
+                            {"label" : "галочек", "state" : false},
+                            {"label" : "галочек", "state" : false},
+                            {"label" : "галочек", "state" : false},
+                        ],
+                        "packed" : true,
+                    },
+                },
+                {
+                    "type" : "line",
+                },
+                {
+                    "type" : "radiobutton_list",
+                    "data" : {
+                        "radiobuttons" : [
+                            {"label" : "Набор"},
+                            {"label" : "плотно"},
+                            {"label" : "упакованных"},
+                            {"label" : "кружков"},
+                            {"label" : "кружков"},
+                            {"label" : "кружков"},
+                            {"label" : "кружков"},
+                            {"label" : "кружков"},
+                            {"label" : "кружков"},
+                            {"label" : "кружков"},
+                            {"label" : "кружков"},
+                        ],
+                        "selected" : 1,
+                        "packed" : true,
+                    },
+                },
+            ],
+        },
+        {
+            "name" : "Бета",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Содержимое шага 2.\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Donec tempus scelerisque elit sed consequat. Donec tincidunt felis ipsum, sit amet interdum arcu malesuada eget. Phasellus porta scelerisque tortor, quis elementum nisi vehicula lacinia. Proin quis purus nec justo maximus eleifend. Aenean vitae metus orci. Nunc ullamcorper lectus ut quam mollis, ac luctus magna hendrerit. Cras consequat fermentum lacus vitae tincidunt. Integer aliquet, sapien interdum varius vehicula, enim nulla maximus eros, quis scelerisque dui mi quis massa. Nunc ac leo justo. Pellentesque vulputate, eros et vehicula venenatis, sapien eros porttitor neque, nec dapibus elit arcu id eros. Duis nec justo augue. Nam et volutpat risus. Fusce malesuada ante quis metus mollis, vitae aliquam mauris euismod. Sed vel mi libero.\nSuspendisse sit amet risus ac justo ornare pharetra. Nullam sed sagittis mauris. Fusce in urna ac sapien cursus blandit et eu justo. Vestibulum faucibus pulvinar dapibus. Aliquam eu pellentesque dolor, vel facilisis diam. Etiam consectetur sapien ut elit blandit, in tristique dui commodo. Vivamus id semper leo. Aliquam vitae erat ut ipsum efficitur suscipit ac vitae sapien. Nam faucibus libero in tellus rutrum, nec elementum mi fermentum. Quisque ex purus, cursus at neque vel, tempus fringilla risus. Vestibulum lacinia, sapien et pretium scelerisque, massa turpis vestibulum diam, eu elementum justo arcu ut urna. Curabitur massa arcu, posuere quis congue in, bibendum sed urna. Nullam maximus, risus eget consectetur consectetur, mi felis faucibus diam, ut molestie dolor odio quis felis. Proin dictum erat sed ornare feugiat. Etiam libero dui, consequat eu bibendum ut, varius sit amet erat.\nUt rutrum mattis magna et iaculis. Vivamus non commodo dolor, in pellentesque diam. Interdum et malesuada fames ac ante ipsum primis in faucibus. In ac ullamcorper dolor. Fusce maximus aliquam congue. Donec laoreet nisi eu ex volutpat aliquam. Nunc id ex nulla. Sed sit amet dolor cursus, pretium magna quis, egestas felis. Praesent nisl est, rutrum sit amet placerat vitae, facilisis vitae nibh. Morbi blandit leo tortor, nec ornare orci ornare vulputate."},
+                },
+            ],
+        },
+        {
+            "name" : "Гамма",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 4",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 5",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 6",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 7",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 8",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 9",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 10",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 11",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 12",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 13",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 14",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 15",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 16",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 17",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 18",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 19",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 20",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 21",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 22",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 23",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 24",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 25",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 26",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 27",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 28",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 29",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 30",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 31",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 32",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 33",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 34",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+        {
+            "name" : "Название шага 35",
+            "widgets" : [
+                {
+                    "type" : "text",
+                    "data" : {"text" : "Текст"},
+                },
+            ],
+        },
+    ],
+}

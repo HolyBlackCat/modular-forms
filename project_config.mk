@@ -9,11 +9,11 @@ OUTPUT_FILE := bin/modular-forms
 LINKER_MODE := CXX
 
 # Flags
-CXXFLAGS := -Wall -Wextra -pedantic-errors -std=c++2a -frelaxed-template-template-args
+CXXFLAGS := -Wall -Wextra -pedantic-errors -std=c++2a -frelaxed-template-template-args -femulated-tls
 LDFLAGS :=
 # Important flags
 override CXXFLAGS += -include src/utils/common.h -include src/program/parachute.h -Ilib/include -Ilib/x86_64-w64-mingw32/include -Isrc
-override LDFLAGS += -Llib/x86_64-w64-mingw32 -lmingw32 -lSDL2main -lSDL2.dll -lfreetype -lbz2 -lz -lfmt -lstdc++fs
+override LDFLAGS += -Llib/x86_64-w64-mingw32 -lmingw32 -lSDL2main -lSDL2.dll -lfreetype -lbz2 -lz -lfmt -lstdc++fs -lole32 -lcomdlg32
 
 # Build modes
 $(call new_mode,debug)
