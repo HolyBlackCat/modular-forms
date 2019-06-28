@@ -43,7 +43,7 @@ struct StateMain : State
 
         void AssignPath(fs::path new_path)
         {
-            path = std::move(new_path);
+            path = fs::weakly_canonical(new_path);
             pretty_name = path.stem().string(); // `stem` means file name without extension.
         }
 
@@ -58,7 +58,7 @@ struct StateMain : State
         }
     };
 
-    std::vector<Tab> tabs;
+    std::vector<Tab> tabs; // Don't modify directly. Use `AddTab()`.
     int active_tab = -1;
 
     bool HaveActiveTab() const {return active_tab >= 0 && active_tab < int(tabs.size());}
@@ -66,6 +66,12 @@ struct StateMain : State
     GuiElements::ImageViewer image_viewer;
 
     StateMain() {}
+
+    Tab& AddTab(Tab new_tab)
+    {
+        tabs.erase(std::remove_if(tabs.begin(), tabs.end(), [&](const Tab &tab) {return tab.path == new_tab.path;}), tabs.end());
+        return tabs.emplace_back(std::move(new_tab));
+    }
 
     static Tab CreateTab(const char *json_data, bool expect_template, fs::path path)
     {
@@ -143,7 +149,7 @@ struct StateMain : State
             if (template_path.extension() != Options::template_extension)
                 Program::Error("Invalid extension, expected `", Options::template_extension, "`.");
 
-            Tab &new_tab = tabs.emplace_back(CreateTab(MemoryFile(template_path.string()).string(), 1, report_path));
+            Tab &new_tab = AddTab(CreateTab(MemoryFile(template_path.string()).string(), 1, report_path));
             new_tab.proc.current_step = 0;
         }
         catch (std::exception &e)
@@ -174,7 +180,7 @@ struct StateMain : State
 
             new_tab.AssignPath(path);
 
-            tabs.push_back(std::move(new_tab));
+            AddTab(std::move(new_tab));
         }
         catch (std::exception &e)
         {
@@ -260,11 +266,6 @@ struct StateMain : State
 
                     ImGui::Separator();
 
-                    if (ImGui::MenuItem("Сохранить", nullptr, nullptr, HaveActiveTab()))
-                    {
-                        Tab_Save();
-                    }
-
                     if (ImGui::MenuItem("Сохранить как", nullptr, nullptr, HaveActiveTab()))
                     {
                         bool got_path = 0;
@@ -289,9 +290,12 @@ struct StateMain : State
                             }
                         }
 
-                        bool ok = Tab_Save();
-                        if (!ok)
-                            tabs[active_tab].AssignPath(std::move(old_path));
+                        if (got_path)
+                        {
+                            bool ok = Tab_Save();
+                            if (!ok)
+                                tabs[active_tab].AssignPath(std::move(old_path));
+                        }
                     }
 
                     ImGui::Separator();
@@ -405,7 +409,7 @@ struct StateMain : State
 
                             for (std::size_t i = 0; i < tab.proc.steps.size(); i++)
                             {
-                                ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(int(i) > tab.proc.current_step ? ImGuiCol_TextDisabled : ImGuiCol_Text));
+                                ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(int(i) > tab.proc.current_step || tab.IsTemplate() ? ImGuiCol_TextDisabled : ImGuiCol_Text));
                                 FINALLY( ImGui::PopStyleColor(); )
 
                                 if (ImGui::Selectable(Data::EscapeStringForWidgetName(tab.proc.steps[i].name).c_str(), int(i) == tab.visible_step))
@@ -450,7 +454,11 @@ struct StateMain : State
 
                             if (tab.visible_step != tab.proc.current_step)
                             {
-                                if (tab.IsFinished())
+                                if (tab.IsTemplate())
+                                {
+                                    // Nothing.
+                                }
+                                else if (tab.IsFinished())
                                 {
                                     ImGui::TextUnformatted("Процедура завершена.");
                                 }
@@ -515,6 +523,11 @@ struct StateMain : State
         { // Modal: "Are you sure you want to exit?"
             auto Exit = [&]
             {
+                for (size_t i = 0; i < tabs.size(); i++)
+                {
+                    active_tab = i;
+                    Tab_Save();
+                }
                 Program::Exit();
             };
 

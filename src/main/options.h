@@ -30,7 +30,7 @@ namespace Options
             style.ItemInnerSpacing  = fvec2(8,4);
             style.TouchExtraPadding = fvec2(0,0);
             style.IndentSpacing     = 26;
-            style.ScrollbarSize     = 20;
+            style.ScrollbarSize     = 16;
             style.GrabMinSize       = 16;
 
             style.WindowBorderSize  = 1;
