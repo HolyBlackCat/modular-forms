@@ -4,6 +4,8 @@
 #include <set>
 #include <string>
 
+#include "imgui.h"
+
 #include "graphics/texture.h"
 #include "program/errors.h"
 #include "stream/readonly_data.h"
