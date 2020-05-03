@@ -5,18 +5,19 @@
 #include <vector>
 #include <optional>
 
-#include "reflection/complete.h"
+#include "reflection/full_with_poly.h"
+#include "reflection/short_macros.h"
 #include "utils/shared_library.h"
 
 #include "main/widgets.h"
 
 namespace Data
 {
-    ReflectStruct(ProcedureStep, (
-        (std::string)(name),
-        (std::optional<bool>)(confirm),
-        (std::vector<Widgets::Widget>)(widgets),
-    ))
+    SIMPLE_STRUCT( ProcedureStep
+        DECL(std::string) name
+        DECL(std::optional<bool>) confirm
+        DECL(std::vector<Widgets::Widget>) widgets
+    )
 
     // Should return 0 on success or a error message on failure.
     // Caller shouldn't free the string.
@@ -25,11 +26,10 @@ namespace Data
 
     struct LibraryFunc
     {
-        Reflect(LibraryFunc)
-        (
-            (std::string)(id),
-            (std::string)(name),
-            (std::optional<bool>)(optional),
+        MEMBERS(
+            DECL(std::string) id
+            DECL(std::string) name
+            DECL(std::optional<bool>) optional
         )
 
         external_func_ptr_t ptr = 0;
@@ -38,11 +38,10 @@ namespace Data
 
     struct Library
     {
-        Reflect(Library)
-        (
-            (std::string)(id),
-            (std::string)(file),
-            (std::vector<LibraryFunc>)(functions),
+        MEMBERS(
+            DECL(std::string) id
+            DECL(std::string) file
+            DECL(std::vector<LibraryFunc>) functions
         )
 
         SharedLibrary library;
@@ -50,13 +49,12 @@ namespace Data
 
     struct Procedure
     {
-        Reflect(Procedure)
-        (
-            (std::string)(name),
-            (int)(current_step)(=-1),
-            (std::optional<bool>)(confirm_exit),
-            (std::optional<std::vector<Library>>)(libraries),
-            (std::vector<ProcedureStep>)(steps),
+        MEMBERS(
+            DECL(std::string) name
+            DECL(int INIT=-1) current_step
+            DECL(std::optional<bool>) confirm_exit
+            DECL(std::optional<std::vector<Library>>) libraries
+            DECL(std::vector<ProcedureStep>) steps
         )
 
         fs::path resource_dir;

@@ -6,7 +6,7 @@
 
 #include "graphics/texture.h"
 #include "program/errors.h"
-#include "utils/memory_file.h"
+#include "stream/readonly_data.h"
 
 namespace Data // Images
 {
@@ -39,7 +39,7 @@ namespace Data // Images
       public:
         Image(std::string file_name) : file_name(file_name) // Don't use this constructor directly, as it doesn't provide caching. Use `Load()` instead.
         {
-            MemoryFile file(file_name);
+            Stream::ReadOnlyData file(file_name);
             try
             {
                 Graphics::Image image(file);

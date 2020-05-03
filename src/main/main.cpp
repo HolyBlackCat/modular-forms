@@ -103,7 +103,7 @@ struct StateMain : State
         {
             for (Data::Library &lib : *new_tab.proc.libraries)
             {
-                constexpr const char *lib_ext = (IsOnPlatform(WINDOWS) ? ".dll" : ".so");
+                constexpr const char *lib_ext = (PLATFORM_IS(windows) ? ".dll" : ".so");
 
                 lib.library = SharedLibrary((new_tab.proc.resource_dir / (lib.file + lib_ext)).string());
 
@@ -149,7 +149,7 @@ struct StateMain : State
             if (template_path.extension() != Options::template_extension)
                 Program::Error("Invalid extension, expected `", Options::template_extension, "`.");
 
-            Tab &new_tab = AddTab(CreateTab(MemoryFile(template_path.string()).string(), 1, report_path));
+            Tab &new_tab = AddTab(CreateTab(Stream::ReadOnlyData(template_path.string()).string(), 1, report_path));
             new_tab.proc.current_step = 0;
         }
         catch (std::exception &e)
@@ -176,7 +176,7 @@ struct StateMain : State
             if (path.extension() != Options::report_extension && path.extension() != Options::template_extension)
                 Program::Error("Invalid extension, expected `", Options::report_extension, "` or `", Options::template_extension, "`.");
 
-            Tab new_tab = CreateTab(MemoryFile(path.string()).string(), path.extension() == Options::template_extension, path);
+            Tab new_tab = CreateTab(Stream::ReadOnlyData(path.string()).string(), path.extension() == Options::template_extension, path);
 
             new_tab.AssignPath(path);
 
@@ -397,7 +397,7 @@ struct StateMain : State
                             int list_column_width = 0;
 
                             for (const Data::ProcedureStep &step : tab.proc.steps)
-                                clamp_var_min(list_column_width, ImGui::CalcTextSize(step.name.c_str()).x);
+                                clamp_var_min(list_column_width, int(ImGui::CalcTextSize(step.name.c_str()).x));
 
                             list_column_width += ImGui::GetStyle().ScrollbarSize + ImGui::GetStyle().FramePadding.x * 4 + ImGui::GetStyle().ItemSpacing.x;
 
@@ -590,11 +590,7 @@ struct StateMain : State
     }
 };
 
-#if IsNotOnPlatform(LINUX)
-#define main SDL_main
-#endif
-
-int main(int argc, char **argv)
+int _main_(int argc, char **argv)
 {
     if (argc > 0)
     {

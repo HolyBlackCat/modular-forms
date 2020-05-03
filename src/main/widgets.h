@@ -6,10 +6,11 @@
 namespace fs = std::filesystem;
 
 #include "program/errors.h"
-#include "reflection/complete.h"
+#include "reflection/full_with_poly.h"
+#include "stream/save_to_file.h"
+#include "strings/common.h"
 #include "utils/json.h"
 #include "utils/poly_storage.h"
-#include "utils/strings.h"
 #include "utils/unicode.h"
 
 namespace Data
@@ -27,7 +28,7 @@ namespace Widgets
         WidgetBase_Low &operator=(const WidgetBase_Low &) = default;
         WidgetBase_Low &operator=(WidgetBase_Low &&) = default;
 
-        virtual void Init(const Data::Procedure &) {};
+        virtual void Init(const Data::Procedure &) {}
         virtual void Display(int index, bool allow_modification) = 0;
         virtual ~WidgetBase_Low() = default;
     };
@@ -46,16 +47,16 @@ namespace Widgets
 
         template <typename T> constexpr void _make()
         {
-            is_reflected = Refl::is_reflected<T>;
+            is_reflected = Refl::Class::members_known<T>;
             internal_name = T::internal_name;
             from_json = [](Widget &obj, Json::View view, std::string elem_name)
             {
-                if constexpr (Refl::is_reflected<T>)
+                if constexpr (Refl::Class::members_known<T>)
                     obj.template derived<T>() = ReflectedObjectFromJson<T>(view[elem_name]);
             };
             to_json = [](const Widget &obj, int indent_steps, int indent_step_w, std::string &str)
             {
-                if constexpr (Refl::is_reflected<T>)
+                if constexpr (Refl::Class::members_known<T>)
                 {
                     ReflectedObjectToJsonLow(obj.template derived<T>(), indent_steps, indent_step_w, str);
                 }
@@ -130,21 +131,18 @@ namespace Widgets
             ret.dynamic().from_json(ret, view, "data");
             return ret;
         }
-        else if constexpr (Refl::is_reflected<T>)
+        else
         {
             T ret;
 
-            using refl_t = Refl::Interface<T>;
-            auto refl = Refl::Interface(ret);
-
-            if constexpr (refl_t::is_structure)
+            if constexpr (Refl::Class::members_known<T>)
             {
-                refl.for_each_field([&](auto index)
+                Meta::cexpr_for<Refl::Class::member_count<T>>([&](auto index)
                 {
                     constexpr int i = index.value;
-                    using field_type = typename refl_t::template field_type<i>;
-                    const std::string &field_name = refl.field_name(i);
-                    auto &field_ref = refl.template field_value<i>();
+                    using field_type = Refl::Class::member_type<T, i>;
+                    std::string field_name = Refl::Class::MemberName<T>(i);
+                    auto &field_ref = Refl::Class::Member<i>(ret);
                     if constexpr (!is_std_optional<field_type>::value)
                     {
                         field_ref = ReflectedObjectFromJson<field_type>(view[field_name]);
@@ -158,23 +156,27 @@ namespace Widgets
                     }
                 });
             }
-            else if constexpr (refl_t::is_container)
-            {
-                int elements = view.GetArraySize();
-
-                for (int i = 0; i < elements; i++)
-                    refl.insert(ReflectedObjectFromJson<typename refl_t::element_type>(view[i]));
-            }
             else
             {
-                static_assert(Meta::value<false, T>, "This type is not supported.");
+                if constexpr (Refl::impl::StdContainer::is_container<T>)
+                {
+                    int elements = view.GetArraySize();
+
+                    for (int i = 0; i < elements; i++)
+                    {
+                        if constexpr (Meta::is_detected<Refl::impl::StdContainer::has_single_arg_insert, T>)
+                            ret.insert(ReflectedObjectFromJson<typename T::value_type>(view[i]));
+                        else
+                            ret.push_back(ReflectedObjectFromJson<typename T::value_type>(view[i]));
+                    }
+                }
+                else
+                {
+                    static_assert(Meta::value<false, T>, "This type is not supported.");
+                }
             }
 
             return ret;
-        }
-        else
-        {
-            static_assert(Meta::value<false, T>, "This type is not supported.");
         }
     }
 
@@ -184,36 +186,28 @@ namespace Widgets
         {
             object->Init(proc);
         }
-        else if constexpr (Refl::is_reflected<T>)
+        else if constexpr (Refl::Class::members_known<T>)
         {
-            using refl_t = Refl::Interface<T>;
-            auto refl = Refl::Interface(object);
-
-            if constexpr (refl_t::is_structure)
+            Meta::cexpr_for<Refl::Class::member_count<T>>([&](auto index)
             {
-                refl.for_each_field([&](auto index)
+                constexpr int i = index.value;
+                using field_type = Refl::Class::member_type<T,i>;
+                auto &field_ref = Refl::Class::Member<i>(object);
+                if constexpr (!is_std_optional<field_type>::value)
                 {
-                    constexpr int i = index.value;
-                    using field_type = typename refl_t::template field_type<i>;
-                    auto &field_ref = refl.template field_value<i>();
-                    if constexpr (!is_std_optional<field_type>::value)
-                    {
-                        InitializeWidgetsRecursively(field_ref, proc);
-                    }
-                    else
-                    {
-                        if (field_ref)
-                            InitializeWidgetsRecursively(*field_ref, proc);
-                    }
-                });
-            }
-            else if constexpr (refl_t::is_container)
-            {
-                refl.for_each_element([&](auto it)
+                    InitializeWidgetsRecursively(field_ref, proc);
+                }
+                else
                 {
-                    InitializeWidgetsRecursively(*it, proc);
-                });
-            }
+                    if (field_ref)
+                        InitializeWidgetsRecursively(*field_ref, proc);
+                }
+            });
+        }
+        else if constexpr (Refl::impl::StdContainer::is_container<T>)
+        {
+            for (auto &it : object)
+                InitializeWidgetsRecursively(it, proc);
         }
     }
 
@@ -311,102 +305,95 @@ namespace Widgets
 
             output += cur_indent_str + "}";
         }
-        else if constexpr (Refl::is_reflected<T>)
+        else if constexpr (Refl::Class::members_known<T>)
         {
-            using refl_t = Refl::Interface<T>;
-            auto refl = Refl::Interface(object);
-
             std::string indent_step_str(indent_step_w, ' ');
             std::string cur_indent_str(indent_step_w * indent_steps, ' ');
 
-            if constexpr (refl_t::is_structure)
+            bool multiline = 0;
+            Meta::cexpr_for<Refl::Class::member_count<T>>([&](auto index)
             {
-                bool multiline = 0;
-                refl.for_each_field([&](auto index)
+                constexpr int i = index.value;
+                using field_type = Refl::Class::member_type<T,i>;
+                if constexpr (!is_std_optional<field_type>::value)
                 {
-                    constexpr int i = index.value;
-                    using field_type = typename refl_t::template field_type<i>;
-                    if constexpr (!is_std_optional<field_type>::value)
-                    {
-                        if (!Refl::Interface<field_type>::is_primitive)
-                            multiline = 1;
-                    }
-                    else
-                    {
-                        if (!Refl::Interface<typename field_type::value_type>::is_primitive)
-                            multiline = 1;
-                    }
-                });
-
-                output += '{';
-                if (multiline)
-                    output += '\n';
-
-                bool first = 1;
-                refl.for_each_field([&](auto index)
+                    if (Refl::Class::members_known<field_type> || Refl::impl::StdContainer::is_container<field_type>)
+                        multiline = 1;
+                }
+                else
                 {
-                    constexpr int i = index.value;
-                    using field_type = typename refl_t::template field_type<i>;
-                    const std::string &field_name = refl.field_name(i);
-                    auto &field_ref = refl.template field_value<i>();
+                    if (Refl::Class::members_known<typename field_type::value_type> || Refl::impl::StdContainer::is_container<typename field_type::value_type>)
+                        multiline = 1;
+                }
+            });
 
-                    if constexpr (is_std_optional<field_type>::value)
-                        if (!field_ref)
-                            return;
+            output += '{';
+            if (multiline)
+                output += '\n';
 
-                    if (first)
-                    {
-                        first = 0;
-                    }
-                    else
-                    {
-                        output += ',';
-                        if (multiline)
-                            output += '\n';
-                        else
-                            output += ' ';
-                    }
+            bool first = 1;
+            Meta::cexpr_for<Refl::Class::member_count<T>>([&](auto index)
+            {
+                constexpr int i = index.value;
+                using field_type = Refl::Class::member_type<T,i>;
+                const std::string &field_name = Refl::Class::MemberName<T>(i);
+                auto &field_ref = Refl::Class::Member<i>(object);
 
+                if constexpr (is_std_optional<field_type>::value)
+                    if (!field_ref)
+                        return;
+
+                if (first)
+                {
+                    first = 0;
+                }
+                else
+                {
+                    output += ',';
                     if (multiline)
-                        output += cur_indent_str + indent_step_str;
-                    output += R"(")" + field_name + R"(" : )";
-
-                    if constexpr (!is_std_optional<field_type>::value)
-                        ReflectedObjectToJsonLow(field_ref, indent_steps+1, indent_step_w, output);
+                        output += '\n';
                     else
-                        ReflectedObjectToJsonLow(*field_ref, indent_steps+1, indent_step_w, output);
-                });
+                        output += ' ';
+                }
 
                 if (multiline)
-                {
-                    output += ",\n";
-                    output += cur_indent_str;
-                }
-                output += '}';
-            }
-            else if constexpr (refl_t::is_container)
-            {
-                if (refl.empty())
-                {
-                    output += "[]";
-                    return;
-                }
-
-                output += "[\n";
-
-                refl.for_each_element([&](auto it)
-                {
                     output += cur_indent_str + indent_step_str;
-                    ReflectedObjectToJsonLow(*it, indent_steps+1, indent_step_w, output);
-                    output += ",\n";
-                });
+                output += R"(")" + field_name + R"(" : )";
 
-                output += cur_indent_str + "]";
-            }
-            else
+                if constexpr (!is_std_optional<field_type>::value)
+                    ReflectedObjectToJsonLow(field_ref, indent_steps+1, indent_step_w, output);
+                else
+                    ReflectedObjectToJsonLow(*field_ref, indent_steps+1, indent_step_w, output);
+            });
+
+            if (multiline)
             {
-                static_assert(Meta::value<false, T>, "This type is not supported.");
+                output += ",\n";
+                output += cur_indent_str;
             }
+            output += '}';
+        }
+        else if constexpr (Refl::impl::StdContainer::is_container<T>)
+        {
+            std::string indent_step_str(indent_step_w, ' ');
+            std::string cur_indent_str(indent_step_w * indent_steps, ' ');
+
+            if (object.empty())
+            {
+                output += "[]";
+                return;
+            }
+
+            output += "[\n";
+
+            for (const auto &it : object)
+            {
+                output += cur_indent_str + indent_step_str;
+                ReflectedObjectToJsonLow(it, indent_steps+1, indent_step_w, output);
+                output += ",\n";
+            }
+
+            output += cur_indent_str + "]";
         }
         else
         {
@@ -428,7 +415,7 @@ namespace Widgets
         const uint8_t *ptr = (const uint8_t*)str.data();
         try
         {
-            MemoryFile::Save(file_name, ptr, ptr + str.size());
+            Stream::SaveFile(file_name, ptr, ptr + str.size());
             return 1;
         }
         catch (...)

@@ -61,9 +61,8 @@ namespace Widgets
     {
         inline static constexpr const char *internal_name = "text";
 
-        Reflect(Text)
-        (
-            (std::string)(text),
+        MEMBERS(
+            DECL(std::string) text
         )
 
         void Display(int index, bool allow_modification) override
@@ -107,24 +106,22 @@ namespace Widgets
 
         struct Function
         {
-            Reflect(Function)
-            (
-                (std::string)(library_id,func_id),
+            MEMBERS(
+                DECL(std::string) library_id, func_id
             )
 
             Data::external_func_ptr_t ptr = 0;
         };
 
-        ReflectStruct(Button, (
-            (std::string)(label),
-            (std::optional<std::string>)(tooltip),
-            (std::optional<Function>)(function),
-        ))
+        SIMPLE_STRUCT( Button
+            DECL(std::string) label
+            DECL(std::optional<std::string>) tooltip
+            DECL(std::optional<Function>) function
+        )
 
-        Reflect(ButtonList)
-        (
-            (std::vector<Button>)(buttons),
-            (std::optional<bool>)(packed),
+        MEMBERS(
+            DECL(std::vector<Button>) buttons
+            DECL(std::optional<bool>) packed
         )
 
         int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the button width on the first `Display()` call. Otherwise it stays at 0.
@@ -163,7 +160,7 @@ namespace Widgets
             if (size_x == -1)
             {
                 for (const auto &button : buttons)
-                    clamp_var_min(size_x, ImGui::CalcTextSize(button.label.c_str()).x);
+                    clamp_var_min(size_x, int(ImGui::CalcTextSize(button.label.c_str()).x));
                 size_x += ImGui::GetStyle().FramePadding.x*2;
             }
 
@@ -223,16 +220,15 @@ namespace Widgets
     {
         inline static constexpr const char *internal_name = "checkbox_list";
 
-        ReflectStruct(CheckBox,(
-            (std::string)(label),
-            (bool)(state)(=0),
-            (std::optional<std::string>)(tooltip),
-        ))
+        SIMPLE_STRUCT( CheckBox
+            DECL(std::string) label
+            DECL(bool INIT=false) state
+            DECL(std::optional<std::string>) tooltip
+        )
 
-        Reflect(CheckBoxList)
-        (
-            (std::vector<CheckBox>)(checkboxes),
-            (std::optional<bool>)(packed),
+        MEMBERS(
+            DECL(std::vector<CheckBox>) checkboxes
+            DECL(std::optional<bool>) packed
         )
 
         struct State
@@ -257,7 +253,7 @@ namespace Widgets
             if (size_x == -1)
             {
                 for (const CheckBox &elem : checkboxes)
-                    clamp_var_min(size_x, ImGui::CalcTextSize(elem.label.c_str()).x);
+                    clamp_var_min(size_x, int(ImGui::CalcTextSize(elem.label.c_str()).x));
 
                 size_x += ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.x + ImGui::GetStyle().ItemInnerSpacing.x;
             }
@@ -311,16 +307,15 @@ namespace Widgets
     {
         inline static constexpr const char *internal_name = "radiobutton_list";
 
-        ReflectStruct(RadioButton, (
-            (std::string)(label),
-            (std::optional<std::string>)(tooltip),
-        ))
+        SIMPLE_STRUCT( RadioButton
+            DECL(std::string) label
+            DECL(std::optional<std::string>) tooltip
+        )
 
-        Reflect(RadioButtonList)
-        (
-            (std::vector<RadioButton>)(radiobuttons),
-            (int)(selected)(=0),
-            (std::optional<bool>)(packed),
+        MEMBERS(
+            DECL(std::vector<RadioButton>) radiobuttons
+            DECL(int INIT=0) selected
+            DECL(std::optional<bool>) packed
         )
 
         int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the column width on the first `Display()` call. Otherwise it stays at 0.
@@ -343,7 +338,7 @@ namespace Widgets
             if (size_x == -1)
             {
                 for (const auto &radiobutton : radiobuttons)
-                    clamp_var_min(size_x, ImGui::CalcTextSize(radiobutton.label.c_str()).x);
+                    clamp_var_min(size_x, int(ImGui::CalcTextSize(radiobutton.label.c_str()).x));
 
                 size_x += ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.x + ImGui::GetStyle().ItemInnerSpacing.x;
             }
@@ -400,12 +395,11 @@ namespace Widgets
     {
         inline static constexpr const char *internal_name = "text_input";
 
-        Reflect(TextInput)
-        (
-            (std::string)(label),
-            (std::string)(value),
-            (std::optional<std::string>)(hint),
-            (std::optional<bool>)(inline_label),
+        MEMBERS(
+            DECL(std::string) label
+            DECL(std::string) value
+            DECL(std::optional<std::string>) hint
+            DECL(std::optional<bool>) inline_label
         )
 
         void Display(int index, bool allow_modification) override
@@ -433,10 +427,9 @@ namespace Widgets
 
         struct Image
         {
-            Reflect(Image)
-            (
-                (std::optional<std::string>)(tooltip),
-                (std::string)(file_name),
+            MEMBERS(
+                DECL(std::optional<std::string>) tooltip
+                DECL(std::string) file_name
             )
 
             std::shared_ptr<Data::Image> data;
@@ -444,10 +437,9 @@ namespace Widgets
             ivec2 current_screen_size = ivec2(0);
         };
 
-        Reflect(ImageList)
-        (
-            (std::vector<Image>)(images),
-            (int)(columns)(=1),
+        MEMBERS(
+            DECL(std::vector<Image>) images
+            DECL(int INIT=1) columns
         )
 
         void Init(const Data::Procedure &proc) override

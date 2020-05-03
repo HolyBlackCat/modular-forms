@@ -85,7 +85,7 @@ void GuiElements::ImageViewer::Display()
 
             ivec2 window_coord_a = image_pixel_offset + (available_size - image_visual_size) / 2;
             ivec2 window_coord_b = window_coord_a + image_visual_size;
-            fmat3 m = linear_mapping<fvec2>(window_coord_a, window_coord_b, fvec2(0), fvec2(1)).matrix();
+            fmat3 m = Math::linear_mapping<fvec2>(window_coord_a, window_coord_b, fvec2(0), fvec2(1)).matrix();
 
             fvec2 tex_coord_a = (m * ivec2(0).to_vec3(1)).to_vec2();
             fvec2 tex_coord_b = (m * available_size.to_vec3(1)).to_vec2();

@@ -4,7 +4,7 @@
 
 #include <portable-file-dialogs.h>
 
-#include "utils/format.h"
+#include "strings/format.h"
 
 namespace FileDialogs
 {
