@@ -1,3 +1,6 @@
+#include <cglfl/cglfl.hpp>
+#if CGLFL_GL_MAJOR == 2 && !defined(CGLFL_GL_API_gles)
+
 // dear imgui: Renderer for OpenGL2 (legacy OpenGL, fixed pipeline)
 // This needs to be used along with a Platform Binding (e.g. GLFW, SDL, Win32, custom..)
 
@@ -36,8 +39,6 @@
 #else
 #include <stdint.h>     // intptr_t
 #endif
-
-#include <GLFL/glfl.h>
 
 // OpenGL Data
 static GLuint       g_FontTexture = 0;
@@ -143,7 +144,7 @@ void ImGui_ImplOpenGL2_RenderDrawData(ImDrawData* draw_data)
                 if (pcmd->UserCallback == ImDrawCallback_ResetRenderState)
                     ImGui_ImplOpenGL2_SetupRenderState(draw_data, fb_width, fb_height);
                 else
-                pcmd->UserCallback(cmd_list, pcmd);
+                    pcmd->UserCallback(cmd_list, pcmd);
             }
             else
             {
@@ -230,3 +231,4 @@ void    ImGui_ImplOpenGL2_DestroyDeviceObjects()
 {
     ImGui_ImplOpenGL2_DestroyFontsTexture();
 }
+#endif

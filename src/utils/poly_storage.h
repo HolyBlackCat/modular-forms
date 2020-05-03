@@ -5,8 +5,8 @@
 #include <type_traits>
 #include <utility>
 
-#include "utils/finally.h"
-#include "utils/meta.h"
+#include "macros/finally.h"
+#include "meta/misc.h"
 
 namespace Poly
 {
@@ -20,7 +20,9 @@ namespace Poly
      *     Poly::Storage<MyClass> x; // Allocates nothing.
      *     Poly::Storage<MyClass> x = nullptr; // Same as above.
      *     Poly::Storage<MyClass> x(Poly::base, ...); // Creates an object using an appropriate constructor.
+     *     Poly::Storage<MyClass> x = Poly::base; // Same as above, but always uses the default constructor.
      *     Poly::Storage<MyBase> x(Poly::derived<MyDerived>, ...); // Creates an object of a possibly derived type. If `MyBase == MyDerived`, it has the same effect as the line above.
+     *     Poly::Storage<MyClass> x = Poly::derived<MyDerived>; // Same as above, but always uses the default constructor.
      *     Poly::Storage<MyBase> x = Poly::Storage<MyBase>::make<MyDerived>(...); // Same as above. If the template argument for `make` is absent, the type defaults to the base class.
      *     Poly::Storage<MyBase> x = x.make<MyDerived>(...); // Same as above.
      *
@@ -80,22 +82,19 @@ namespace Poly
      */
 
 
+    namespace impl
+    {
+        template <typename T, typename D> inline constexpr T type_erasure_data_storage = []{T ret{}; ret.template _make<D>(); return ret;}();
+
+        // Check if the type is copy constructible, or at least assumed to be.
+        // We can't really check if an abstract class is copy-constructible, so we check if it's copy-assignable, even though we never invoke the assignment operator.
+        template <typename T> inline constexpr bool assume_copy_constructible = std::is_abstract_v<T> ? std::is_copy_assignable_v<T> : std::is_copy_constructible_v<T>;
+    }
+
     template <typename T> struct DefaultData
     {
-        /* Optional flags:
-         *
-         * `using _use_fake_copying_if_needed = void;`
-         *     Forces `class Storage` to be copyable even if the template parameter is not copyable.
-         *     Actual attempt to copy it should cause a segfault.
-         */
-
         template <typename D> constexpr void _make() {}
     };
-
-    template <typename T> using DetectDataFlag_fake_copying = typename T::_use_fake_copying_if_needed;
-
-
-    template <typename T, typename D> inline static constexpr T type_erasure_data_storage = []{T ret{}; ret.template _make<D>(); return ret;}();
 
 
     inline constexpr struct base_tag {} base;
@@ -106,15 +105,14 @@ namespace Poly
 
     template <typename T, typename UserData = DefaultData<T>>
     class Storage
-        : Meta::copyable_if<std::is_copy_constructible_v<T> || Meta::is_detected<DetectDataFlag_fake_copying, UserData>>
+        : Meta::copyable_if<Storage<T, UserData>, impl::assume_copy_constructible<T>>
     {
         static_assert(!std::is_const_v<T> && !std::is_volatile_v<T>, "The template parameter has to have no cv-qualifiers.");
         static_assert(std::is_class_v<T>, "The template parameter has to be a structure or a class.");
         static_assert(alignof(T) <= __STDCPP_DEFAULT_NEW_ALIGNMENT__, "Overaligned types are not supported.");
 
       public:
-        static constexpr bool is_copyable = std::is_copy_constructible_v<T>;
-        static constexpr bool is_fake_copyable = !is_copyable && Meta::is_detected<DetectDataFlag_fake_copying, UserData>;
+        static constexpr bool is_copyable = impl::assume_copy_constructible<T>;
 
       private:
         struct Low
@@ -210,7 +208,7 @@ namespace Poly
             Low() {}
 
             Low(Low &&other) noexcept : data(std::exchange(other.data, {})) {}
-            Low &operator=(Low other) noexcept {std::swap(data, other.data); return *this;};
+            Low &operator=(Low other) noexcept {std::swap(data, other.data); return *this;}
 
             ~Low() {}
 
@@ -234,7 +232,7 @@ namespace Poly
 
                 Low ret;
                 ret.data.pointers = Unique::template make<D>(std::forward<P>(params)...);
-                ret.data.table = &type_erasure_data_storage<Table, D>;
+                ret.data.table = &impl::type_erasure_data_storage<Table, D>;
 
                 if (out_ptr)
                     *out_ptr = reinterpret_cast<D *>(ret.data.pointers.bytes());
@@ -248,7 +246,7 @@ namespace Poly
             {
                 static_assert(std::is_base_of_v<T, D>, "This type is not derived from the base.");
                 static_assert(!std::is_const_v<D> && !std::is_volatile_v<D>, "The template parameter has to have no cv-qualifiers.");
-                return data.table == &type_erasure_data_storage<Table, D>;
+                return data.table == &impl::type_erasure_data_storage<Table, D>;
             }
 
             template <typename D> D &derived_or_throw()

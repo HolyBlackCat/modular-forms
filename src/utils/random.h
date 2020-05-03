@@ -8,7 +8,8 @@
 #include <type_traits>
 #include <utility>
 
-#include "robust_compare.h"
+#include "program/platform.h"
+#include "utils/robust_math.h"
 
 template <typename DefaultInt = int, typename DefaultReal = float>
 class Random
@@ -70,7 +71,10 @@ class Random
         {
             if constexpr (is_integral)
             {
-                return RobustCompare::int_clamp(std::llround(std::ceil(value)), min_limit, max_limit);
+                auto val = std::llround(std::ceil(value));
+                if (Robust::less(val, min_limit)) return min_limit;
+                if (Robust::greater(val, max_limit)) return max_limit;
+                return val;
             }
             else
             {
@@ -82,7 +86,10 @@ class Random
         {
             if constexpr (is_integral)
             {
-                return RobustCompare::int_clamp(std::llround(std::floor(value)), min_limit, max_limit);
+                auto val = std::llround(std::floor(value));
+                if (Robust::less(val, min_limit)) return min_limit;
+                if (Robust::greater(val, max_limit)) return max_limit;
+                return val;
             }
             else
             {
@@ -174,7 +181,7 @@ class Random
 
     // Clang doesn't want to do CTAD without this guide, even though it seems redundant. It seems like a Clang bug, but I'm not sure.
     // GCC, on the other hand, works without the guide and refuses to compile it (because it's not at namespace scope), which is certainly a GCC bug.
-    NotOnPlatform(GCC)( template <typename F> Function(F &&) -> Function<F>; )
+    PLATFORM_IF(gcc)( template <typename F> Function(F &&) -> Function<F>; )
 
   public:
     using generator_t = std::mt19937;

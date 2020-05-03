@@ -3,13 +3,14 @@
 #include <type_traits>
 #include <utility>
 
-#include <GLFL/glfl.h>
+#include <cglfl/cglfl.hpp>
 
+#include "graphics/types.h"
+#include "macros/finally.h"
+#include "meta/misc.h"
 #include "program/errors.h"
-#include "reflection/complete.h"
-#include "utils/finally.h"
+#include "reflection/full.h"
 #include "utils/mat.h"
-#include "utils/meta.h"
 
 namespace Graphics
 {
@@ -30,6 +31,9 @@ namespace Graphics
         dynamic_draw = GL_DYNAMIC_DRAW,
         stream_draw  = GL_STREAM_DRAW,
     };
+
+    // Indicates that the attribute is normalized.
+    struct Normalized : Refl::BasicAttribute {};
 
     class VertexBuffers
     {
@@ -66,7 +70,8 @@ namespace Graphics
         // First, binds storage for the same handle if necessary. Then sets attribute pointers if T is reflected, otherwise disables all attributes.
         // BindDraw(0) is a special case. It disables all attributes, and thus strips draw binding from currently bound buffer (if any).
         // `attributes` is effectively unused. We need it to compute attribute offsets.
-        template <typename T> static void BindDraw(GLuint handle, const T &attributes)
+        template <typename T>
+        static void BindDraw(GLuint handle, const T &attributes)
         {
             if (handle == 0) // Null handle is a special case.
             {
@@ -80,26 +85,19 @@ namespace Graphics
                 return;
             BindStorage(handle);
 
-            constexpr bool is_reflected = Refl::is_reflected<T>;
-            int field_count;
-            if constexpr (is_reflected)
-                field_count = Refl::Interface<T>::field_count();
-            else
-                field_count = 0;
+            constexpr bool is_reflected = Refl::Class::members_known<T>;
+            constexpr auto field_count = Refl::Class::member_count<T>; // 0 if not reflected.
 
             SetActiveAttribCount(field_count);
 
             if constexpr (is_reflected)
             {
-                using refl_t = Refl::Interface<const T>;
-                refl_t refl(attributes);
-
                 int attrib_index = 0;
 
-                refl_t::for_each_field([&](auto index)
+                Meta::cexpr_for<Refl::Class::member_count<T>>([&](auto index)
                 {
-                    constexpr int i = index.value;
-                    using field_type = typename refl_t::template field_type<i>;
+                    constexpr auto i = index.value;
+                    using field_type = Refl::Class::member_type<T, i>;
                     using base_type = Math::vec_base_t<field_type>;
 
                     GLint type_enum;
@@ -125,8 +123,8 @@ namespace Graphics
                     else
                         static_assert(Meta::value<false, T, decltype(index)>, "Attributes of this type are not supported.");
 
-                    uintptr_t offset = reinterpret_cast<const char *>(&refl.template field_value<i>()) - reinterpret_cast<const char *>(&attributes);
-                    glVertexAttribPointer(attrib_index++, Math::vec_size_v<field_type>, type_enum, 0, sizeof(T), (void *)offset);
+                    uintptr_t offset = reinterpret_cast<const char *>(&Refl::Class::Member<i>(attributes)) - reinterpret_cast<const char *>(&attributes);
+                    glVertexAttribPointer(attrib_index++, Math::vec_size_v<field_type>, type_enum, Refl::Class::member_has_attrib<T, i, Normalized>, sizeof(T), (void *)offset);
                 });
             }
 
@@ -149,7 +147,8 @@ namespace Graphics
         }
     };
 
-    template <typename T> class VertexBuffer
+    template <typename T>
+    class VertexBuffer
     {
         static_assert(!std::is_void_v<T>, "Element type can't be void. Use uint8_t instead.");
 
@@ -161,7 +160,7 @@ namespace Graphics
         Data data;
 
       public:
-        static constexpr bool is_reflected = Refl::is_reflected<T>;
+        static constexpr bool is_reflected = Refl::Class::members_known<T>;
 
         VertexBuffer() {}
 
@@ -263,22 +262,22 @@ namespace Graphics
             glBufferSubData(GL_ARRAY_BUFFER, offset, bytes, source);
         }
 
-        void Draw(DrawMode p, int offset, int count) const // Binds for drawing.
+        void Draw(DrawMode m, int offset, int count) const // Binds for drawing.
         {
             static_assert(is_reflected, "Element type of this buffer is not reflected, unable to draw.");
             DebugAssert("Attempt to use a null vertex buffer.", *this);
             if (!*this)
                 return;
             BindDraw();
-            glDrawArrays(p, offset, count);
+            glDrawArrays(m, offset, count);
         }
-        void Draw(DrawMode p, int count) const // Binds for drawing.
+        void Draw(DrawMode m, int count) const // Binds for drawing.
         {
-            Draw(p, 0, count);
+            Draw(m, 0, count);
         }
-        void Draw(DrawMode p) const // Binds for drawing.
+        void Draw(DrawMode m) const // Binds for drawing.
         {
-            Draw(p, 0, Size());
+            Draw(m, 0, Size());
         }
     };
 }

@@ -7,11 +7,12 @@
 #include <vector>
 #include <utility>
 
+#include "meta/misc.h"
 #include "program/errors.h"
 #include "utils/mat.h"
-#include "utils/meta.h"
 
-template <int D, typename T> class MultiArray
+template <int D, typename T>
+class MultiArray
 {
   public:
     static constexpr int dimensions = D;
@@ -20,7 +21,7 @@ template <int D, typename T> class MultiArray
 
     using type = T;
     using index_t = std::ptrdiff_t;
-    using index_vec_t = vec<D, index_t>;
+    using index_vec_t = index_vec<D>;
 
   private:
     index_vec_t size_vec;
@@ -62,13 +63,13 @@ template <int D, typename T> class MultiArray
 
         return storage[index];
     }
-    [[nodiscard]] type &throwing_at(index_vec_t pos)
+    [[nodiscard]] type &safe_throwing_at(index_vec_t pos)
     {
         if (!pos_in_range(pos))
             Program::Error("Multiarray index ", pos, " is out of range. The array size is ", size_vec, ".");
         return unsafe_at(pos);
     }
-    [[nodiscard]] type &nonthrowing_at(index_vec_t pos)
+    [[nodiscard]] type &safe_nonthrowing_at(index_vec_t pos)
     {
         if (!pos_in_range(pos))
             Program::HardError("Multiarray index ", pos, " is out of range. The array size is ", size_vec, ".");
@@ -89,26 +90,26 @@ template <int D, typename T> class MultiArray
     {
         if (!pos_in_range(pos))
             return;
-        return unsafe_at(pos) = obj;
+        unsafe_at(pos) = obj;
     }
     void try_set(index_vec_t pos, type &&obj)
     {
         if (!pos_in_range(pos))
             return;
-        return unsafe_at(pos) = std::move(obj);
+        unsafe_at(pos) = std::move(obj);
     }
 
     [[nodiscard]] const type &unsafe_at(index_vec_t pos) const
     {
         return const_cast<MultiArray *>(this)->unsafe_at(pos);
     }
-    [[nodiscard]] const type &throwing_at(index_vec_t pos) const
+    [[nodiscard]] const type &safe_throwing_at(index_vec_t pos) const
     {
-        return const_cast<MultiArray *>(this)->throwing_at(pos);
+        return const_cast<MultiArray *>(this)->safe_throwing_at(pos);
     }
-    [[nodiscard]] const type &nonthrowing_at(index_vec_t pos) const
+    [[nodiscard]] const type &safe_nonthrowing_at(index_vec_t pos) const
     {
-        return const_cast<MultiArray *>(this)->nonthrowing_at(pos);
+        return const_cast<MultiArray *>(this)->safe_nonthrowing_at(pos);
     }
     [[nodiscard]] const type &clamped_at(index_vec_t pos) const
     {
@@ -140,3 +141,7 @@ template <int D, typename T> class MultiArray
         return storage.data();
     }
 };
+
+template <typename T> using Array2D = MultiArray<2, T>;
+template <typename T> using Array3D = MultiArray<3, T>;
+template <typename T> using Array4D = MultiArray<4, T>;

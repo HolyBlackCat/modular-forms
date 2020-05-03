@@ -1,14 +1,15 @@
 #include "window.h"
 
-#include <GLFL/glfl.h>
+#include <cglfl/cglfl.hpp>
 
+#include "macros/finally.h"
 #include "program/errors.h"
-#include "utils/finally.h"
-#include "utils/strings.h"
+#include "program/platform.h"
+#include "strings/common.h"
 
 
 // Export some variables to advise video drivers to use the best available video card for the application.
-OnPlatform(WINDOWS)
+PLATFORM_IF(windows)
 (
     extern "C"
     {
@@ -96,7 +97,7 @@ namespace Interface
     Window::Window(std::string title, ivec2 size, FullscreenMode mode, const WindowSettings &settings)
     {
         constexpr const char *extra_error_details =
-            OnPlatform(PC)
+            PLATFORM_IF(pc)
             (
                 "\n"
                 "If you have several video cards, change your video driver settings\n"
@@ -104,7 +105,7 @@ namespace Interface
                 "If it doesn't help, try updating your video card driver.\n"
                 "If it doesn't help as well, your video card is probably too old to run this application.";
             )
-            OnPlatform(MOBILE)
+            PLATFORM_IF(mobile)
             (
                 "\n"
                 "Your device doesn't support this application.";
@@ -272,11 +273,7 @@ namespace Interface
         SDL_GetWindowSize(data.handle, &data.size.x, &data.size.y);
 
         // Load OpenGL functions
-        glfl::set_function_loader(SDL_GL_GetProcAddress);
-        if (settings.gl_profile != Profile::es)
-            glfl::load_gl(settings.gl_major, settings.gl_minor);
-        else
-            glfl::load_gles(settings.gl_major, settings.gl_minor);
+        cglfl::load(SDL_GL_GetProcAddress);
 
         // Allocate input times array
         data.input_times = std::vector<InputTimes>(Input::IndexCount);
@@ -290,6 +287,11 @@ namespace Interface
         if (!instance)
             return 0;
         return instance->data.handle;
+    }
+
+    bool Window::IsOpen()
+    {
+        return bool(instance);
     }
 
     Window &Window::Get() // This will throw if there is no window.
@@ -478,7 +480,7 @@ namespace Interface
                   case SDL_WINDOWEVENT_CLOSE:
                     data.exit_request_time = data.tick_counter;
                     break;
-                  case SDL_WINDOWEVENT_RESIZED:
+                  case SDL_WINDOWEVENT_SIZE_CHANGED:
                     if (data.tick_counter == 1)
                         break;
                     data.resize_time = data.tick_counter;

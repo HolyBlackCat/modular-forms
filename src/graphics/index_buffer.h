@@ -4,12 +4,12 @@
 #include <type_traits>
 #include <utility>
 
-#include <GLFL/glfl.h>
+#include <cglfl/cglfl.hpp>
 
 #include "graphics/vertex_buffer.h"
+#include "macros/finally.h"
+#include "meta/misc.h"
 #include "program/errors.h"
-#include "utils/finally.h"
-#include "utils/meta.h"
 
 namespace Graphics
 {
@@ -40,10 +40,13 @@ namespace Graphics
         }
     };
 
-    template <typename T = std::uint16_t> class IndexBuffer
+    template <typename T> inline constexpr bool is_valid_index_type_v = std::is_same_v<T, std::uint8_t> || std::is_same_v<T, std::uint16_t> || std::is_same_v<T, std::uint32_t>;
+
+    template <typename T>
+    class IndexBuffer
     {
         // Note that some OpenGL versions don't support 32-bit indices. In this case using them will cause a runtime error.
-        static_assert(std::is_same_v<T, std::uint8_t> || std::is_same_v<T, std::uint16_t> || std::is_same_v<T, std::uint32_t>, "Invalid index buffer element type.");
+        static_assert(is_valid_index_type_v<T>, "Invalid index buffer element type.");
 
         struct Data
         {
@@ -70,9 +73,9 @@ namespace Graphics
         }
 
         IndexBuffer(IndexBuffer &&other) noexcept : data(std::exchange(other.data, {})) {}
-        IndexBuffer &operator=(IndexBuffer &&other) noexcept
+        IndexBuffer &operator=(IndexBuffer other) noexcept
         {
-            data = std::exchange(other.data, {});
+            std::swap(data, other.data);
             return *this;
         }
 
@@ -149,21 +152,42 @@ namespace Graphics
                 static_assert(Meta::value<false, T>, "Invalid index buffer element type.");
         }
 
-        void Draw(DrawMode p, int offset, int count) const // Binds the buffer.
+        void DrawFromBoundBuffer(DrawMode m, int offset, int count) const // Binds the buffer.
         {
             DebugAssert("Attempt to use a null index buffer.", *this);
             if (!*this)
                 return;
             Bind();
-            glDrawElements(p, count, IndexTypeEnum(), (void *)(uintptr_t)(offset * sizeof(T)));
+            glDrawElements(m, count, IndexTypeEnum(), (void *)(uintptr_t)(offset * sizeof(T)));
         }
-        void Draw(DrawMode p, int count) const // Binds the buffer.
+        void DrawFromBoundBuffer(DrawMode m, int count) const // Binds the buffer.
         {
-            Draw(p, 0, count);
+            DrawFromBoundBuffer(m, 0, count);
         }
-        void Draw(DrawMode p) const // Binds the buffer.
+        void DrawFromBoundBuffer(DrawMode m) const // Binds the buffer.
         {
-            Draw(p, 0, Size());
+            DrawFromBoundBuffer(m, 0, Size());
+        }
+
+        template <typename V>
+        void Draw(const VertexBuffer<V> &buffer, DrawMode m, int offset, int count) const // Binds this buffer (and well as the passed vertex buffer).
+        {
+            buffer.BindDraw();
+            DrawFromBoundBuffer(m, offset, count);
+        }
+
+        template <typename V>
+        void Draw(const VertexBuffer<V> &buffer, DrawMode m, int count) const // Binds this buffer (and well as the passed vertex buffer).
+        {
+            buffer.BindDraw();
+            DrawFromBoundBuffer(m, count);
+        }
+
+        template <typename V>
+        void Draw(const VertexBuffer<V> &buffer, DrawMode m) const // Binds this buffer (and well as the passed vertex buffer).
+        {
+            buffer.BindDraw();
+            DrawFromBoundBuffer(m);
         }
     };
 }

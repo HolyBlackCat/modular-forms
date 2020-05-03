@@ -6,9 +6,9 @@
 
 #include <SDL2/SDL_loadso.h>
 
+#include "macros/finally.h"
 #include "program/errors.h"
-#include "utils/finally.h"
-#include "utils/strings.h"
+#include "strings/common.h"
 
 
 class SharedLibrary

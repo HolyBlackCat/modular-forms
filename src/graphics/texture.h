@@ -3,10 +3,10 @@
 #include <cstddef>
 #include <utility>
 
-#include <GLFL/glfl.h>
+#include <cglfl/cglfl.hpp>
 
 #include "graphics/image.h"
-#include "utils/finally.h"
+#include "macros/finally.h"
 #include "utils/mat.h"
 #include "utils/resource_allocator.h"
 
@@ -25,9 +25,9 @@ namespace Graphics
         clamp  = GL_CLAMP_TO_EDGE,
         mirror = GL_MIRRORED_REPEAT,
         repeat = GL_REPEAT,
-        OnPlatform(PC)(
+        #ifdef GL_CLAMP_TO_BORDER
         fill   = GL_CLAMP_TO_BORDER,
-        )
+        #endif
     };
 
     class TexObject
@@ -237,7 +237,14 @@ namespace Graphics
 
         TexUnit &&SetData(ivec2 size, const uint8_t *pixels = 0)
         {
-            SetData(OnPlatform(PC)(GL_RGBA8) OnPlatform(MOBILE)(GL_RGBA), GL_RGBA, GL_UNSIGNED_BYTE, size, pixels);
+            GLenum internal_format =
+            #ifdef GL_RGBA8
+                GL_RGBA8;
+            #else
+                GL_RGBA;
+            #endif
+
+            SetData(internal_format, GL_RGBA, GL_UNSIGNED_BYTE, size, pixels);
             return std::move(*this);
         }
         TexUnit &&SetData(GLenum internal_format, GLenum format, GLenum type, ivec2 size, const uint8_t *pixels = 0)
@@ -312,13 +319,13 @@ namespace Graphics
 
         Texture &&SetData(ivec2 new_size, const uint8_t *pixels = 0)
         {
-            unit.SetData(size, pixels);
+            unit.SetData(new_size, pixels);
             size = new_size;
             return std::move(*this);
         }
         Texture &&SetData(GLenum internal_format, GLenum format, GLenum type, ivec2 new_size, const uint8_t *pixels = 0)
         {
-            unit.SetData(internal_format, format, type, size, pixels);
+            unit.SetData(internal_format, format, type, new_size, pixels);
             size = new_size;
             return std::move(*this);
         }

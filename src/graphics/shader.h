@@ -4,60 +4,18 @@
 #include <type_traits>
 #include <utility>
 
-#include <GLFL/glfl.h>
+#include <cglfl/cglfl.hpp>
 
-#include "texture.h"
-
-#include "reflection/complete.h"
+#include "graphics/texture.h"
+#include "graphics/types.h"
+#include "macros/finally.h"
+#include "meta/misc.h"
 #include "program/errors.h"
-#include "utils/finally.h"
-#include "utils/meta.h"
-#include "utils/strings.h"
+#include "reflection/full.h"
+#include "strings/common.h"
 
 namespace Graphics
 {
-    template <typename T> std::string GlslTypeName()
-    {
-        if constexpr (Math::is_vector_v<T> || Math::is_matrix_v<T>)
-        {
-            constexpr int is_vec = Math::is_vector_v<T>;
-            using base = typename T::type;
-
-            std::string ret;
-
-                 if constexpr (std::is_same_v<base, bool        >) ret = "b";
-            else if constexpr (std::is_same_v<base, double      >) ret = "d";
-            else if constexpr (std::is_same_v<base, int         >) ret = "i";
-            else if constexpr (std::is_same_v<base, unsigned int>) ret = "u";
-            else static_assert(std::is_same_v<base, float>, "No name for this type.");
-
-            if constexpr (is_vec)
-            {
-                ret += "vec";
-                ret += std::to_string(T::size);
-            }
-            else
-            {
-                ret += "mat";
-                ret += std::to_string(T::width);
-                if constexpr(T::width != T::height)
-                {
-                    ret += "x";
-                    ret += std::to_string(T::height);
-                }
-            }
-
-            return ret;
-        }
-        else if constexpr (std::is_same_v<T, TexUnit     >) return "sampler2D";
-        else if constexpr (std::is_same_v<T, bool        >) return "bool";
-        else if constexpr (std::is_same_v<T, float       >) return "float";
-        else if constexpr (std::is_same_v<T, double      >) return "double";
-        else if constexpr (std::is_same_v<T, int         >) return "int";
-        else if constexpr (std::is_same_v<T, unsigned int>) return "uint";
-        else static_assert(!sizeof(T), "No name for this type.");
-    }
-
     struct ShaderConfig
     {
         /* GLSL version chart
@@ -141,6 +99,14 @@ namespace Graphics
 
     template <typename T> class Uniform;
 
+    // Uniform attributes.
+
+    // Indicates that the uniform is for the vertex shader only.
+    struct Vert : Refl::BasicAttribute {};
+    // Indicates that the uniform is for the fragment shader only.
+    struct Frag : Refl::BasicAttribute {};
+
+
     class Shader
     {
         template <typename T> void AssignUniformLocation(Uniform<T> &uniform, int loc);
@@ -170,19 +136,20 @@ namespace Graphics
             }
             else
             {
+                static_assert(Refl::Class::member_names_known<T>);
+
                 std::string header;
 
-                using refl = Refl::Interface<T>;
-                refl::for_each_field([&](auto index)
+                Meta::cexpr_for<Refl::Class::member_count<T>>([&](auto index)
                 {
-                    constexpr int i = index.value;
-                    using field_type = typename refl::template field_type<i>;
+                    constexpr auto i = index.value;
+                    using field_type = Refl::Class::member_type<T, i>;
                     header += cfg.attribute;
                     header += ' ';
-                    header += GlslTypeName<field_type>();
+                    header += GlslTypeName<Math::change_vec_base_t<field_type, float>>();
                     header += ' ';
                     header += pref.attribute_prefix;
-                    header += refl::field_name(i);
+                    header += Refl::Class::MemberName<T>(i);
                     header += ";\n";
                 });
 
@@ -198,22 +165,26 @@ namespace Graphics
             }
             else
             {
+                static_assert(Refl::Class::member_names_known<T>);
+
                 std::string header;
 
-                using refl = Refl::Interface<T>;
-                refl::for_each_field([&](auto index)
+                Meta::cexpr_for<Refl::Class::member_count<T>>([&](auto index)
                 {
                     constexpr int i = index.value;
-                    using field_type_raw = typename refl::template field_type<i>;
-                    if ((field_type_raw::is_vertex && is_vertex) || (field_type_raw::is_fragment && !is_vertex))
+                    using field_type = typename Refl::Class::member_type<T, i>::type;
+                    constexpr bool uni_vert = Refl::Class::member_has_attrib<T, i, Vert>;
+                    constexpr bool uni_frag = Refl::Class::member_has_attrib<T, i, Frag>;
+                    static_assert(!(uni_vert && uni_frag), "Can't have both `Vert` and `Frag` attributes on a single member. To use it in both shaders, remove both attributes.");
+
+                    if ((!uni_vert || !uni_frag) || (uni_vert && is_vertex) || (uni_frag && !is_vertex))
                     {
-                        using field_type = typename field_type_raw::type;
                         header += cfg.uniform;
                         header += ' ';
                         header += GlslTypeName<std::remove_extent_t<field_type>>();
                         header += ' ';
                         header += pref.uniform_prefix;
-                        header += refl::field_name(i);
+                        header += Refl::Class::MemberName<T>(i);
                         if constexpr (std::is_array_v<field_type>)
                         {
                             header += '[';
@@ -236,12 +207,13 @@ namespace Graphics
             }
             else
             {
+                static_assert(Refl::Class::member_names_known<T>);
+
                 std::vector<std::string> ret;
 
-                using refl = Refl::Interface<T>;
-                refl::for_each_field([&](auto index)
+                Meta::cexpr_for<Refl::Class::member_count<T>>([&](auto index)
                 {
-                    ret.push_back(pref.attribute_prefix + refl::field_name(index.value));
+                    ret.push_back(pref.attribute_prefix + Refl::Class::MemberName<T>(index.value));
                 });
 
                 return ret;
@@ -344,12 +316,13 @@ namespace Graphics
             }
             else
             {
-                auto refl = Refl::Interface(uniforms);
-                refl.for_each_field([&](auto index)
+                static_assert(Refl::Class::member_names_known<UniformsT>);
+
+                Meta::cexpr_for<Refl::Class::member_count<UniformsT>>([&](auto index)
                 {
-                    constexpr int i = index.value;
+                    constexpr auto i = index.value;
                     // Note that we don't need to check the return value. Even if a uniform is not found and -1 location is returned, glUniform* will silently no-op on it.
-                    AssignUniformLocation(refl.template field_value<i>(), glGetUniformLocation(data.handle, (pref.uniform_prefix + refl.field_name(i)).c_str()));
+                    AssignUniformLocation(Refl::Class::Member<i>(uniforms), glGetUniformLocation(data.handle, (pref.uniform_prefix + Refl::Class::MemberName<UniformsT>(i)).c_str()));
                 });
             }
         }
@@ -411,10 +384,6 @@ namespace Graphics
         }
 
       public:
-        // Derived classes override those.
-        static constexpr bool is_vertex = 1;
-        static constexpr bool is_fragment = 1;
-
         using type_with_extent = T;
         using type = std::remove_extent_t<T>;
 
@@ -454,12 +423,12 @@ namespace Graphics
             else if constexpr (std::is_same_v<effective_type, ivec2       >) glUniform2i (location, object.x, object.y);
             else if constexpr (std::is_same_v<effective_type, ivec3       >) glUniform3i (location, object.x, object.y, object.z);
             else if constexpr (std::is_same_v<effective_type, ivec4       >) glUniform4i (location, object.x, object.y, object.z, object.w);
-            OnPlatform(PC)(
+            #ifdef glUniform1ui
             else if constexpr (std::is_same_v<effective_type, unsigned int>) glUniform1ui(location, object);
             else if constexpr (std::is_same_v<effective_type, uvec2       >) glUniform2ui(location, object.x, object.y);
             else if constexpr (std::is_same_v<effective_type, uvec3       >) glUniform3ui(location, object.x, object.y, object.z);
             else if constexpr (std::is_same_v<effective_type, uvec4       >) glUniform4ui(location, object.x, object.y, object.z, object.w);
-            )
+            #endif
             else set_no_bind(&object, 1);
             return object;
         }
@@ -488,41 +457,25 @@ namespace Graphics
             else if constexpr (std::is_same_v<effective_type, ivec2       >) glUniform2iv (l, count, reinterpret_cast<const base_type *>(ptr));
             else if constexpr (std::is_same_v<effective_type, ivec3       >) glUniform3iv (l, count, reinterpret_cast<const base_type *>(ptr));
             else if constexpr (std::is_same_v<effective_type, ivec4       >) glUniform4iv (l, count, reinterpret_cast<const base_type *>(ptr));
-            OnPlatform(PC)(
+            #ifdef glUniform1uiv
             else if constexpr (std::is_same_v<effective_type, unsigned int>) glUniform1uiv(l, count, reinterpret_cast<const base_type *>(ptr));
             else if constexpr (std::is_same_v<effective_type, uvec2       >) glUniform2uiv(l, count, reinterpret_cast<const base_type *>(ptr));
             else if constexpr (std::is_same_v<effective_type, uvec3       >) glUniform3uiv(l, count, reinterpret_cast<const base_type *>(ptr));
             else if constexpr (std::is_same_v<effective_type, uvec4       >) glUniform4uiv(l, count, reinterpret_cast<const base_type *>(ptr));
-            )
+            #endif
             else if constexpr (std::is_same_v<effective_type, fmat2       >) glUniformMatrix2fv(l, count, 0, reinterpret_cast<const base_type *>(ptr));
             else if constexpr (std::is_same_v<effective_type, fmat3       >) glUniformMatrix3fv(l, count, 0, reinterpret_cast<const base_type *>(ptr));
             else if constexpr (std::is_same_v<effective_type, fmat4       >) glUniformMatrix4fv(l, count, 0, reinterpret_cast<const base_type *>(ptr));
-            OnPlatform(PC)(
+            #ifdef glUniformMatrix3x2fv
             else if constexpr (std::is_same_v<effective_type, fmat3x2     >) glUniformMatrix3x2fv(l, count, 0, reinterpret_cast<const base_type *>(ptr));
             else if constexpr (std::is_same_v<effective_type, fmat4x2     >) glUniformMatrix4x2fv(l, count, 0, reinterpret_cast<const base_type *>(ptr));
             else if constexpr (std::is_same_v<effective_type, fmat2x3     >) glUniformMatrix2x3fv(l, count, 0, reinterpret_cast<const base_type *>(ptr));
             else if constexpr (std::is_same_v<effective_type, fmat4x3     >) glUniformMatrix4x3fv(l, count, 0, reinterpret_cast<const base_type *>(ptr));
             else if constexpr (std::is_same_v<effective_type, fmat2x4     >) glUniformMatrix2x4fv(l, count, 0, reinterpret_cast<const base_type *>(ptr));
             else if constexpr (std::is_same_v<effective_type, fmat3x4     >) glUniformMatrix3x4fv(l, count, 0, reinterpret_cast<const base_type *>(ptr));
-            )
+            #endif
             else static_assert(std::is_void_v<effective_type>, "Uniforms of this type are not supported.");
         }
-    };
-
-    template <typename T> class VertUniform : public Uniform<T>
-    {
-      public:
-        static constexpr bool is_fragment = 0;
-        using Uniform<T>::Uniform;
-        using Uniform<T>::operator=;
-    };
-
-    template <typename T> class FragUniform : public Uniform<T>
-    {
-      public:
-        static constexpr bool is_vertex = 0;
-        using Uniform<T>::Uniform;
-        using Uniform<T>::operator=;
     };
 
     template <typename T> inline void Shader::AssignUniformLocation(Uniform<T> &uniform, int loc)
