@@ -28,9 +28,8 @@ enum ImGuiItemFlags_
 
 namespace ImGui
 {
-
-    IMGUI_API void          PushItemFlag(ImGuiItemFlags option, bool enabled);
-    IMGUI_API void          PopItemFlag();
+    IMGUI_API void PushItemFlag(ImGuiItemFlags option, bool enabled);
+    IMGUI_API void PopItemFlag();
 }
 //}
 
@@ -57,10 +56,8 @@ namespace Widgets
         InteractionGuard &operator=(const InteractionGuard &) = delete;
     };
 
-    struct Text : Widgets::WidgetBase<Text>
+    STRUCT( Text EXTENDS Widgets::BasicWidget )
     {
-        inline static constexpr const char *internal_name = "text";
-
         MEMBERS(
             DECL(std::string) text
         )
@@ -75,9 +72,9 @@ namespace Widgets
         }
     };
 
-    struct Spacing : Widgets::WidgetBase<Spacing>
+    STRUCT( Spacing EXTENDS Widgets::BasicWidget )
     {
-        inline static constexpr const char *internal_name = "spacing";
+        MEMBERS()
 
         void Display(int index, bool allow_modification) override
         {
@@ -88,9 +85,9 @@ namespace Widgets
         }
     };
 
-    struct Line : Widgets::WidgetBase<Line>
+    STRUCT( Line EXTENDS Widgets::BasicWidget )
     {
-        inline static constexpr const char *internal_name = "line";
+        MEMBERS()
 
         void Display(int index, bool allow_modification) override
         {
@@ -100,28 +97,28 @@ namespace Widgets
         }
     };
 
-    struct ButtonList : Widgets::WidgetBase<ButtonList>
+    STRUCT( ButtonList EXTENDS Widgets::BasicWidget )
     {
-        inline static constexpr const char *internal_name = "button_list";
-
         struct Function
         {
             MEMBERS(
                 DECL(std::string) library_id, func_id
             )
 
-            Data::external_func_ptr_t ptr = 0;
+            Data::external_func_ptr_t ptr;
+
+            Function() : ptr(nullptr) {}
         };
 
         SIMPLE_STRUCT( Button
             DECL(std::string) label
-            DECL(std::optional<std::string>) tooltip
-            DECL(std::optional<Function>) function
+            DECL(std::string ATTR Refl::Optional) tooltip
+            DECL(std::optional<Function> ATTR Refl::Optional) function
         )
 
         MEMBERS(
             DECL(std::vector<Button>) buttons
-            DECL(std::optional<bool>) packed
+            DECL(bool INIT=false ATTR Refl::Optional) packed
         )
 
         int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the button width on the first `Display()` call. Otherwise it stays at 0.
@@ -151,7 +148,7 @@ namespace Widgets
             }
 
             // We can't calculate proper width here, as fonts don't seem to be loaded this early.
-            if (packed && *packed)
+            if (packed)
                 size_x = -1;
         }
 
@@ -197,11 +194,11 @@ namespace Widgets
                         }
                     }
 
-                    if (button.tooltip && ImGui::IsItemHovered())
+                    if (button.tooltip.size() > 0 && ImGui::IsItemHovered())
                     {
                         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(Options::Visual::tooltip_padding));
                         ImGui::BeginTooltip();
-                        ImGui::TextUnformatted(button.tooltip->c_str());
+                        ImGui::TextUnformatted(button.tooltip.c_str());
                         ImGui::EndTooltip();
                         ImGui::PopStyleVar();
                     }
@@ -216,19 +213,17 @@ namespace Widgets
         }
     };
 
-    struct CheckBoxList : Widgets::WidgetBase<CheckBoxList>
+    STRUCT( CheckBoxList EXTENDS Widgets::BasicWidget )
     {
-        inline static constexpr const char *internal_name = "checkbox_list";
-
         SIMPLE_STRUCT( CheckBox
             DECL(std::string) label
             DECL(bool INIT=false) state
-            DECL(std::optional<std::string>) tooltip
+            DECL(std::string ATTR Refl::Optional) tooltip
         )
 
         MEMBERS(
             DECL(std::vector<CheckBox>) checkboxes
-            DECL(std::optional<bool>) packed
+            DECL(bool INIT=false ATTR Refl::Optional) packed
         )
 
         struct State
@@ -244,7 +239,7 @@ namespace Widgets
                 Program::Error("A checkbox list must contain at least one checkbox.");
 
             // We can't calculate proper width here, as fonts don't seem to be loaded this early.
-            if (packed && *packed)
+            if (packed)
                 size_x = -1;
         }
 
@@ -284,11 +279,11 @@ namespace Widgets
                         checkbox.state = new_state;
                     }
 
-                    if (checkbox.tooltip && ImGui::IsItemHovered())
+                    if (checkbox.tooltip.size() > 0 && ImGui::IsItemHovered())
                     {
                         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(Options::Visual::tooltip_padding));
                         ImGui::BeginTooltip();
-                        ImGui::TextUnformatted(checkbox.tooltip->c_str());
+                        ImGui::TextUnformatted(checkbox.tooltip.c_str());
                         ImGui::EndTooltip();
                         ImGui::PopStyleVar();
                     }
@@ -303,19 +298,17 @@ namespace Widgets
         }
     };
 
-    struct RadioButtonList : Widgets::WidgetBase<RadioButtonList>
+    STRUCT( RadioButtonList EXTENDS Widgets::BasicWidget )
     {
-        inline static constexpr const char *internal_name = "radiobutton_list";
-
         SIMPLE_STRUCT( RadioButton
             DECL(std::string) label
-            DECL(std::optional<std::string>) tooltip
+            DECL(std::string ATTR Refl::Optional) tooltip
         )
 
         MEMBERS(
             DECL(std::vector<RadioButton>) radiobuttons
             DECL(int INIT=0) selected
-            DECL(std::optional<bool>) packed
+            DECL(bool INIT=false ATTR Refl::Optional) packed
         )
 
         int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the column width on the first `Display()` call. Otherwise it stays at 0.
@@ -329,7 +322,7 @@ namespace Widgets
                 Program::Error("Index of a selected radio button is out of range.");
 
             // We can't calculate a proper button width here, as fonts don't seem to be loaded this early.
-            if (packed && *packed)
+            if (packed)
                 size_x = -1;
         }
 
@@ -372,11 +365,11 @@ namespace Widgets
                             selected = 0;
                     }
 
-                    if (radiobutton.tooltip && ImGui::IsItemHovered())
+                    if (radiobutton.tooltip.size() > 0 && ImGui::IsItemHovered())
                     {
                         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(Options::Visual::tooltip_padding));
                         ImGui::BeginTooltip();
-                        ImGui::TextUnformatted(radiobutton.tooltip->c_str());
+                        ImGui::TextUnformatted(radiobutton.tooltip.c_str());
                         ImGui::EndTooltip();
                         ImGui::PopStyleVar();
                     }
@@ -391,44 +384,38 @@ namespace Widgets
         }
     };
 
-    struct TextInput : Widgets::WidgetBase<TextInput>
+    STRUCT( TextInput EXTENDS Widgets::BasicWidget )
     {
-        inline static constexpr const char *internal_name = "text_input";
-
         MEMBERS(
             DECL(std::string) label
             DECL(std::string) value
-            DECL(std::optional<std::string>) hint
-            DECL(std::optional<bool>) inline_label
+            DECL(std::string ATTR Refl::Optional) hint
+            DECL(bool INIT=true ATTR Refl::Optional) inline_label
         )
 
         void Display(int index, bool allow_modification) override
         {
             InteractionGuard interaction_guard(allow_modification, InteractionGuard::visuals_only);
 
-            bool use_inline_label = inline_label ? *inline_label : 1;
-
-            if (!use_inline_label)
+            if (!inline_label)
                 ImGui::TextUnformatted(label.c_str());
 
-            std::string inline_label = Str(use_inline_label ? Data::EscapeStringForWidgetName(label) : "", "###", index);
+            std::string inline_label_text = Str(inline_label ? Data::EscapeStringForWidgetName(label) : "", "###", index);
 
-            if (hint)
-                ImGui::InputTextWithHint(inline_label.c_str(), hint->c_str(), &value, !allow_modification * ImGuiInputTextFlags_ReadOnly);
+            if (hint.size() > 0)
+                ImGui::InputTextWithHint(inline_label_text.c_str(), hint.c_str(), &value, !allow_modification * ImGuiInputTextFlags_ReadOnly);
             else
-                ImGui::InputText(inline_label.c_str(), &value, !allow_modification * ImGuiInputTextFlags_ReadOnly);
+                ImGui::InputText(inline_label_text.c_str(), &value, !allow_modification * ImGuiInputTextFlags_ReadOnly);
 
         }
     };
 
-    struct ImageList : Widgets::WidgetBase<ImageList>
+    STRUCT( ImageList EXTENDS Widgets::BasicWidget )
     {
-        inline static constexpr const char *internal_name = "image_list";
-
         struct Image
         {
             MEMBERS(
-                DECL(std::optional<std::string>) tooltip
+                DECL(std::string ATTR Refl::Optional) tooltip
                 DECL(std::string) file_name
             )
 
@@ -495,11 +482,11 @@ namespace Widgets
                     ImGui::PopID();
                     ImGui::PopID();
 
-                    if (image.tooltip && ImGui::IsItemHovered())
+                    if (image.tooltip.size() > 0 && ImGui::IsItemHovered())
                     {
                         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, fvec2(Options::Visual::tooltip_padding));
                         ImGui::BeginTooltip();
-                        ImGui::TextUnformatted(image.tooltip->c_str());
+                        ImGui::TextUnformatted(image.tooltip.c_str());
                         ImGui::EndTooltip();
                         ImGui::PopStyleVar();
                     }

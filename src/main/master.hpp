@@ -26,7 +26,6 @@
 #include "strings/common.h"
 #include "strings/format.h"
 #include "utils/clock.h"
-#include "utils/json.h"
 #include "utils/mat.h"
 #include "utils/poly_storage.h"
 #include "utils/shared_library.h"

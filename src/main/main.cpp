@@ -41,8 +41,12 @@ struct StateMain : State
         inline static unsigned int id_counter = 1;
         int id = id_counter++;
 
+        // Uses `IsTemplate` to auto-insert extension if missing.
         void AssignPath(fs::path new_path)
         {
+            if (!new_path.has_extension())
+                new_path.replace_extension(IsTemplate() ? Options::template_extension : Options::report_extension);
+
             path = fs::weakly_canonical(new_path);
             pretty_name = path.stem().string(); // `stem` means file name without extension.
         }
@@ -73,15 +77,15 @@ struct StateMain : State
         return tabs.emplace_back(std::move(new_tab));
     }
 
-    static Tab CreateTab(const char *json_data, bool expect_template, fs::path path)
+    static Tab CreateTab(fs::path path, bool expect_template)
     {
         Tab new_tab;
 
-        // Parse JSON.
-        Json json(json_data, 64);
-        new_tab.proc = Widgets::ReflectedObjectFromJson<Data::Procedure>(json.GetView());
+        // Parse.
+        Stream::Input input_stream(path.string());
+        new_tab.proc = Refl::FromString<Data::Procedure>(input_stream);
 
-        // Validate JSON data.
+        // Validate data.
         if (new_tab.proc.steps.size() < 1)
             Program::Error("The procedure must have at least one step.");
         if (expect_template)
@@ -109,7 +113,7 @@ struct StateMain : State
 
                 for (Data::LibraryFunc &func : lib.functions)
                 {
-                    if (func.optional.value_or(false))
+                    if (func.optional)
                         func.ptr = reinterpret_cast<Data::external_func_ptr_t>(lib.library.GetFunctionOrNull(func.name));
                     else
                         func.ptr = reinterpret_cast<Data::external_func_ptr_t>(lib.library.GetFunction(func.name));
@@ -149,8 +153,9 @@ struct StateMain : State
             if (template_path.extension() != Options::template_extension)
                 Program::Error("Invalid extension, expected `", Options::template_extension, "`.");
 
-            Tab &new_tab = AddTab(CreateTab(Stream::ReadOnlyData(template_path.string()).string(), 1, report_path));
+            Tab &new_tab = AddTab(CreateTab(template_path, 1));
             new_tab.proc.current_step = 0;
+            new_tab.AssignPath(report_path);
         }
         catch (std::exception &e)
         {
@@ -176,9 +181,7 @@ struct StateMain : State
             if (path.extension() != Options::report_extension && path.extension() != Options::template_extension)
                 Program::Error("Invalid extension, expected `", Options::report_extension, "` or `", Options::template_extension, "`.");
 
-            Tab new_tab = CreateTab(Stream::ReadOnlyData(path.string()).string(), path.extension() == Options::template_extension, path);
-
-            new_tab.AssignPath(path);
+            Tab new_tab = CreateTab(path, path.extension() == Options::template_extension);
 
             AddTab(std::move(new_tab));
         }
@@ -195,7 +198,9 @@ struct StateMain : State
 
         try
         {
-            Widgets::ReflectedObjectToJsonFile(tabs[active_tab].proc, tabs[active_tab].path.string());
+            Stream::Output output_stream(tabs[active_tab].path.string());
+            Refl::ToString(tabs[active_tab].proc, output_stream, Refl::ToStringOptions::Pretty());
+            output_stream.Flush();
             return 1;
         }
         catch (std::exception &e)
@@ -304,7 +309,12 @@ struct StateMain : State
                         {
                             bool ok = Tab_Save();
                             if (!ok)
-                                tabs[active_tab].AssignPath(std::move(old_path));
+                                got_path = false;
+                        }
+
+                        if (!got_path)
+                        {
+                            tabs[active_tab].AssignPath(std::move(old_path));
                         }
                     }
 
@@ -335,7 +345,10 @@ struct StateMain : State
 
             tab.proc.current_step++;
 
-            Widgets::ReflectedObjectToJsonFile(tab.proc, tab.path.string());
+            { // Write to file
+                Stream::Output output_stream(tab.path.string());
+                Refl::ToString(tab.proc, output_stream, Refl::ToStringOptions::Pretty());
+            }
 
             if (tab.IsFinished()) // Sic!
                 return;
@@ -461,7 +474,7 @@ struct StateMain : State
 
                             if (tab.visible_step == tab.proc.current_step && ImGui::Button("Завершить шаг"))
                             {
-                                if (current_step.confirm && *current_step.confirm)
+                                if (current_step.confirm)
                                     need_step_end_confirmation = 1;
                                 else
                                     EndStep();
@@ -553,7 +566,7 @@ struct StateMain : State
                 bool need_confirmation = 0;
                 for (const auto &tab : tabs)
                 {
-                    if (tab.proc.confirm_exit.value_or(0))
+                    if (tab.proc.confirm_exit)
                     {
                         need_confirmation = 1;
                         break;

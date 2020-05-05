@@ -6,7 +6,7 @@
 
 namespace Options
 {
-    inline const std::string template_extension = ".json", template_dir = "templates", report_extension = ".rep";
+    inline const std::string template_extension = ".template", template_dir = "templates", report_extension = ".report";
 
     namespace Visual
     {

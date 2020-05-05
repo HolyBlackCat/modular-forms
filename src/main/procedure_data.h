@@ -15,7 +15,7 @@ namespace Data
 {
     SIMPLE_STRUCT( ProcedureStep
         DECL(std::string) name
-        DECL(std::optional<bool>) confirm
+        DECL(bool INIT=false ATTR Refl::Optional) confirm
         DECL(std::vector<Widgets::Widget>) widgets
     )
 
@@ -29,7 +29,7 @@ namespace Data
         MEMBERS(
             DECL(std::string) id
             DECL(std::string) name
-            DECL(std::optional<bool>) optional
+            DECL(bool INIT=false ATTR Refl::Optional) optional
         )
 
         external_func_ptr_t ptr = 0;
@@ -52,7 +52,7 @@ namespace Data
         MEMBERS(
             DECL(std::string) name
             DECL(int INIT=-1) current_step
-            DECL(std::optional<bool>) confirm_exit
+            DECL(bool INIT=false ATTR Refl::Optional) confirm_exit
             DECL(std::optional<std::vector<Library>>) libraries
             DECL(std::vector<ProcedureStep>) steps
         )
