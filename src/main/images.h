@@ -36,10 +36,34 @@ namespace Data // Images
             }
         };
 
-        inline static std::set<LoadedImage, std::less<>> loaded_images;
-
       public:
-        Image(std::string file_name) : file_name(file_name) // Don't use this constructor directly, as it doesn't provide caching. Use `Load()` instead.
+        class Cache
+        {
+            using image_set_t = std::set<LoadedImage, std::less<>>;
+            std::shared_ptr<image_set_t> loaded_images;
+
+          public:
+            Cache() : loaded_images(std::make_shared<image_set_t>()) {}
+            Cache(const Cache &other) : loaded_images(other.loaded_images) {}
+            Cache &operator=(const Cache &other) {loaded_images = other.loaded_images; return *this;}
+
+            [[nodiscard]] std::shared_ptr<Image> Load(std::string file_name)
+            {
+                auto it = loaded_images->find(file_name);
+                if (it == loaded_images->end())
+                    return loaded_images->emplace(LoadedImage{std::make_shared<Image>(file_name)}).first->data;
+                else
+                    return it->data;
+            }
+
+            void Reset()
+            {
+                loaded_images->clear();
+            }
+        };
+
+        // Don't use this constructor directly, as it doesn't do caching. Use `Cache::Load()` instead.
+        Image(std::string file_name) : file_name(file_name)
         {
             Stream::ReadOnlyData file(file_name);
             try
@@ -53,29 +77,6 @@ namespace Data // Images
             {
                 Program::Error("While loading image `", file_name, "`: ", e.what());
             }
-        }
-
-        static std::shared_ptr<Image> Load(std::string file_name)
-        {
-            auto it = loaded_images.find(file_name);
-            if (it == loaded_images.end())
-            {
-                return loaded_images.emplace(LoadedImage{std::make_shared<Image>(file_name)}).first->data;
-            }
-            else
-            {
-                return it->data;
-            }
-        }
-
-        Image(const Image &) = delete;
-        Image &operator=(const Image &) = delete;
-
-        ~Image()
-        {
-            auto it = loaded_images.find(file_name);
-            DebugAssert("Unable to destroy Image: not in the cache.", it != loaded_images.end());
-            loaded_images.erase(it);
         }
 
         ImTextureID TextureHandle() const

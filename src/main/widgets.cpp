@@ -4,6 +4,7 @@
 #include <imgui.h>
 
 #include "interface/messagebox.h"
+#include "program/errors.h"
 
 #include "main/images.h"
 #include "main/gui_strings.h"
@@ -35,6 +36,59 @@ namespace ImGui
 
 namespace Widgets
 {
+    void InitializeWidgets(Data::Procedure &proc)
+    {
+        proc.image_cache.Reset();
+
+        try
+        {
+            for (Data::Library &lib : proc.libraries)
+            {
+                constexpr const char *lib_ext = (PLATFORM_IS(windows) ? ".dll" : ".so");
+
+                lib.library = SharedLibrary((proc.resource_dir / (lib.file + lib_ext)).string());
+
+                for (Data::LibraryFunc &func : lib.functions)
+                {
+                    func.ptr = reinterpret_cast<Data::external_func_ptr_t>(lib.library.GetFunction(func.name));
+                }
+            }
+        }
+        catch (std::exception &e)
+        {
+            Program::Error("While processing shared libraries:\n", e.what());
+        }
+
+        int step_index = 0;
+        for (Data::ProcedureStep &step : proc.steps)
+        {
+            step_index++;
+
+            try
+            {
+                int widget_index = 0;
+                for (Widget &w : step.widgets)
+                {
+                    widget_index++;
+
+                    try
+                    {
+                        w->Init(proc);
+                    }
+                    catch (std::exception &e)
+                    {
+                        Program::Error("When initializing widget {} `{}`:\n{}"_format(widget_index, Refl::Polymorphic::Name(w), e.what()));
+                    }
+                }
+            }
+            catch (std::exception &e)
+            {
+                Program::Error("In step {} `{}`:\n{}"_format(step_index, step.name, e.what()));
+            }
+        }
+    }
+
+
     class InteractionGuard
     {
       public:
@@ -62,6 +116,8 @@ namespace Widgets
             DECL(std::string) text
         )
 
+        std::string PrettyName() const override {return "Текст";}
+
         void Display(int index, bool allow_modification) override
         {
             (void)index;
@@ -70,11 +126,18 @@ namespace Widgets
             ImGui::TextUnformatted(text.c_str());
             ImGui::PopTextWrapPos();
         }
+
+        void DisplayEditor(Data::Procedure &, int index) override
+        {
+            ImGui::InputTextMultiline("###edit_text:{}"_format(index).c_str(), &text, ivec2(ImGui::GetContentRegionAvail().x, ImGui::GetFrameHeightWithSpacing() * 4), ImGuiInputTextFlags_AllowTabInput);
+        }
     };
 
     STRUCT( Spacing EXTENDS Widgets::BasicWidget )
     {
         MEMBERS()
+
+        std::string PrettyName() const override {return "Отступ";}
 
         void Display(int index, bool allow_modification) override
         {
@@ -83,11 +146,16 @@ namespace Widgets
             for (int i = 0; i < 4; i++)
                 ImGui::Spacing();
         }
+
+        void DisplayEditor(Data::Procedure &, int) override {}
+        bool IsEditable() const override {return false;}
     };
 
     STRUCT( Line EXTENDS Widgets::BasicWidget )
     {
         MEMBERS()
+
+        std::string PrettyName() const override {return "Разделитель";}
 
         void Display(int index, bool allow_modification) override
         {
@@ -95,6 +163,9 @@ namespace Widgets
             (void)allow_modification;
             ImGui::Separator();
         }
+
+        void DisplayEditor(Data::Procedure &, int) override {}
+        bool IsEditable() const override {return false;}
     };
 
     STRUCT( ButtonList EXTENDS Widgets::BasicWidget )
@@ -114,6 +185,16 @@ namespace Widgets
             DECL(std::string) label
             DECL(std::string ATTR Refl::Optional) tooltip
             DECL(std::optional<Function> ATTR Refl::Optional) function
+            VERBATIM
+            void SimulatePress() const
+            {
+                if (!function)
+                    return;
+
+                const char *error_message = function->ptr();
+                if (error_message)
+                    Interface::MessageBox(Interface::MessageBoxType::warning, "Function error", error_message);
+            }
         )
 
         MEMBERS(
@@ -122,6 +203,8 @@ namespace Widgets
         )
 
         int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the button width on the first `Display()` call. Otherwise it stays at 0.
+
+        std::string PrettyName() const override {return "Кнопки";}
 
         void Init(const Data::Procedure &proc) override
         {
@@ -133,11 +216,8 @@ namespace Widgets
                 if (!button.function)
                     continue;
 
-                if (!proc.libraries)
-                    Program::Error("At least one button needs a function from a shared library, but no shared library list is provided.");
-
-                auto lib_it = std::find_if(proc.libraries->begin(), proc.libraries->end(), [&](const Data::Library &lib){return lib.id == button.function->library_id;});
-                if (lib_it == proc.libraries->end())
+                auto lib_it = std::find_if(proc.libraries.begin(), proc.libraries.end(), [&](const Data::Library &lib){return lib.id == button.function->library_id;});
+                if (lib_it == proc.libraries.end())
                     Program::Error("Shared library with id `", button.function->library_id, "` not found in the list of shared libraries.");
 
                 auto func_it = std::find_if(lib_it->functions.begin(), lib_it->functions.end(), [&](const Data::LibraryFunc &func){return func.id == button.function->func_id;});
@@ -148,8 +228,7 @@ namespace Widgets
             }
 
             // We can't calculate proper width here, as fonts don't seem to be loaded this early.
-            if (packed)
-                size_x = -1;
+            size_x = packed ? -1 : 0;
         }
 
         void Display(int index, bool allow_modification) override
@@ -187,11 +266,7 @@ namespace Widgets
                         InteractionGuard interaction_guard(allow_modification && has_function);
 
                         if (ImGui::Button(Str(Data::EscapeStringForWidgetName(button.label), "###", index, ":", elem_index).c_str(), fvec2(size_x,0)) && allow_modification && has_function)
-                        {
-                            const char *error_message = button.function->ptr();
-                            if (error_message)
-                                Interface::MessageBox(Interface::MessageBoxType::warning, "Error", error_message);
-                        }
+                            button.SimulatePress();
                     }
 
                     if (button.tooltip.size() > 0 && ImGui::IsItemHovered())
@@ -211,6 +286,68 @@ namespace Widgets
                     ImGui::SetCursorPosY(cur_y);
             }
         }
+
+        void DisplayEditor(Data::Procedure &proc, int index) override
+        {
+            ImGui::Checkbox("Располагать компактно###edit_button_compactness:{}"_format(index).c_str(), &packed);
+
+            int button_index = 0;
+            for (Button &button : buttons)
+            {
+                ImGui::Bullet();
+                ImGui::TextUnformatted("Кнопка {}"_format(++button_index).c_str());
+
+                ImGui::Indent();
+                FINALLY( ImGui::Unindent(); )
+
+                ImGui::TextUnformatted("Текст");
+                ImGui::InputText("###edit_button_text:{}:{}"_format(index, button_index).c_str(), &button.label);
+                ImGui::TextUnformatted("Всплывающая подсказка (не обязательно)");
+                ImGui::InputText("###edit_button_tooltip:{}:{}"_format(index, button_index).c_str(), &button.tooltip);
+
+                if (!button.function)
+                {
+                    if (ImGui::SmallButton("Привязать функцию"))
+                        button.function.emplace();
+                }
+                else
+                {
+                    ImGui::Indent();
+                    FINALLY( ImGui::Unindent(); )
+
+                    ImGui::TextUnformatted("ID динамической библиотеки");
+                    ImGui::InputText("###edit_button_func_lib_id:{}:{}"_format(index, button_index).c_str(), &button.function->library_id);
+                    ImGui::TextUnformatted("ID функции");
+                    ImGui::InputText("###edit_button_func_id:{}:{}"_format(index, button_index).c_str(), &button.function->func_id);
+
+                    if (ImGui::SmallButton("Отвязать функцию"))
+                        button.function.reset();
+
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("Вызвать функцию"))
+                    {
+                        try
+                        {
+                            Init(proc);
+                            button.SimulatePress();
+                        }
+                        catch (std::exception &e)
+                        {
+                            Interface::MessageBox(Interface::MessageBoxType::error, "Invalid function", "Unable to call function:\n{}"_format(e.what()).c_str());
+                        }
+                    }
+                }
+                ImGui::Spacing();
+            }
+            if (ImGui::Button("+"))
+                buttons.emplace_back();
+            if (buttons.size() > 0)
+            {
+                ImGui::SameLine();
+                if (ImGui::Button("-"))
+                    buttons.pop_back();
+            }
+        }
     };
 
     STRUCT( CheckBoxList EXTENDS Widgets::BasicWidget )
@@ -226,12 +363,9 @@ namespace Widgets
             DECL(bool INIT=false ATTR Refl::Optional) packed
         )
 
-        struct State
-        {
-            bool state = 0;
-        };
-
         int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the column width on the first `Display()` call. Otherwise it stays at 0.
+
+        std::string PrettyName() const override {return "Галочки";}
 
         void Init(const Data::Procedure &) override
         {
@@ -239,8 +373,7 @@ namespace Widgets
                 Program::Error("A checkbox list must contain at least one checkbox.");
 
             // We can't calculate proper width here, as fonts don't seem to be loaded this early.
-            if (packed)
-                size_x = -1;
+            size_x = packed ? -1 : 0;
         }
 
         void Display(int index, bool allow_modification) override
@@ -296,6 +429,36 @@ namespace Widgets
                     ImGui::SetCursorPosY(cur_y);
             }
         }
+
+        void DisplayEditor(Data::Procedure &, int index) override
+        {
+            ImGui::Checkbox("Располагать компактно###edit_checkbox_compactness:{}"_format(index).c_str(), &packed);
+
+            int checkbox_index = 0;
+            for (CheckBox &checkbox : checkboxes)
+            {
+                ImGui::Bullet();
+                ImGui::TextUnformatted("Галочка {}"_format(++checkbox_index).c_str());
+
+                ImGui::Indent();
+                FINALLY( ImGui::Unindent(); )
+
+                ImGui::TextUnformatted("Текст");
+                ImGui::InputText("###edit_checkbox_text:{}:{}"_format(index, checkbox_index).c_str(), &checkbox.label);
+                ImGui::TextUnformatted("Всплывающая подсказка (не обязательно)");
+                ImGui::InputText("###edit_checkbox_tooltip:{}:{}"_format(index, checkbox_index).c_str(), &checkbox.tooltip);
+                ImGui::Checkbox("Нажата по умолчанию###edit_checkbox_state:{}:{}"_format(index, checkbox_index).c_str(), &checkbox.state);
+                ImGui::Spacing();
+            }
+            if (ImGui::Button("+"))
+                checkboxes.emplace_back();
+            if (checkboxes.size() > 0)
+            {
+                ImGui::SameLine();
+                if (ImGui::Button("-"))
+                    checkboxes.pop_back();
+            }
+        }
     };
 
     STRUCT( RadioButtonList EXTENDS Widgets::BasicWidget )
@@ -313,6 +476,8 @@ namespace Widgets
 
         int size_x = 0; // If `packed == true`, this is set to -1 in `Init()`, and then to the column width on the first `Display()` call. Otherwise it stays at 0.
 
+        std::string PrettyName() const override {return "Радиокнопки";}
+
         void Init(const Data::Procedure &) override
         {
             if (radiobuttons.size() == 0)
@@ -322,8 +487,7 @@ namespace Widgets
                 Program::Error("Index of a selected radio button is out of range.");
 
             // We can't calculate a proper button width here, as fonts don't seem to be loaded this early.
-            if (packed)
-                size_x = -1;
+            size_x = packed ? -1 : 0;
         }
 
         void Display(int index, bool allow_modification) override
@@ -382,6 +546,47 @@ namespace Widgets
                     ImGui::SetCursorPosY(cur_y);
             }
         }
+
+        void DisplayEditor(Data::Procedure &, int index) override
+        {
+            ImGui::Checkbox("Располагать компактно###edit_radiobutton_compactness:{}"_format(index).c_str(), &packed);
+
+            int radiobutton_index = 0;
+            for (RadioButton &radiobutton : radiobuttons)
+            {
+                ImGui::Bullet();
+                ImGui::TextUnformatted("Радиокнопка {}"_format(++radiobutton_index).c_str());
+
+                ImGui::Indent();
+                FINALLY( ImGui::Unindent(); )
+
+                ImGui::TextUnformatted("Текст");
+                ImGui::InputText("###edit_radiobutton_text:{}:{}"_format(index, radiobutton_index).c_str(), &radiobutton.label);
+                ImGui::TextUnformatted("Всплывающая подсказка (не обязательно)");
+                ImGui::InputText("###edit_radiobutton_tooltip:{}:{}"_format(index, radiobutton_index).c_str(), &radiobutton.tooltip);
+
+                int new_selected = selected;
+                if (ImGui::RadioButton("Нажата по умолчанию###edit_radiobutton_state:{}:{}"_format(index, radiobutton_index).c_str(), &selected, radiobutton_index))
+                {
+                    if (selected != new_selected)
+                        selected = new_selected;
+                    else
+                        selected = 0;
+                }
+                ImGui::Spacing();
+            }
+            if (ImGui::Button("+"))
+                radiobuttons.emplace_back();
+            if (radiobuttons.size() > 0)
+            {
+                ImGui::SameLine();
+                if (ImGui::Button("-"))
+                    radiobuttons.pop_back();
+            }
+
+            if (selected < 0 || selected > int(radiobuttons.size()))
+                selected = 0;
+        }
     };
 
     STRUCT( TextInput EXTENDS Widgets::BasicWidget )
@@ -392,6 +597,8 @@ namespace Widgets
             DECL(std::string ATTR Refl::Optional) hint
             DECL(bool INIT=true ATTR Refl::Optional) inline_label
         )
+
+        std::string PrettyName() const override {return "Текстовое поле";}
 
         void Display(int index, bool allow_modification) override
         {
@@ -406,7 +613,17 @@ namespace Widgets
                 ImGui::InputTextWithHint(inline_label_text.c_str(), hint.c_str(), &value, !allow_modification * ImGuiInputTextFlags_ReadOnly);
             else
                 ImGui::InputText(inline_label_text.c_str(), &value, !allow_modification * ImGuiInputTextFlags_ReadOnly);
+        }
 
+        void DisplayEditor(Data::Procedure &, int index) override
+        {
+            ImGui::TextUnformatted("Подпись");
+            ImGui::InputText("###edit_textinput_label:{}"_format(index).c_str(), &label);
+            ImGui::Checkbox("Располагать подпись справа от поля###edit_textinput_compactness:{}"_format(index).c_str(), &inline_label);
+            ImGui::TextUnformatted("Значение по умолчанию");
+            ImGui::InputText("###edit_textinput_value:{}"_format(index).c_str(), &value);
+            ImGui::TextUnformatted("Подсказка (отображается, если никакой текст не введен; не обязательна)");
+            ImGui::InputText("###edit_textinput_hint:{}"_format(index).c_str(), &hint);
         }
     };
 
@@ -426,8 +643,10 @@ namespace Widgets
 
         MEMBERS(
             DECL(std::vector<Image>) images
-            DECL(int INIT=1) columns
+            DECL(int INIT=4) columns
         )
+
+        std::string PrettyName() const override {return "Изображения";}
 
         void Init(const Data::Procedure &proc) override
         {
@@ -435,7 +654,7 @@ namespace Widgets
                 Program::Error("An image list must contain at least one image.");
 
             for (auto &image : images)
-                image.data = Data::Image::Load((proc.resource_dir / image.file_name).string());
+                image.data = proc.image_cache.Load((proc.resource_dir / image.file_name).string());
         }
 
         void Display(int index, bool allow_modification) override
@@ -502,6 +721,38 @@ namespace Widgets
                 ImGui::NextColumn();
                 if (i != columns-1)
                     ImGui::SetCursorPosY(cur_y);
+            }
+        }
+
+        void DisplayEditor(Data::Procedure &, int index) override
+        {
+
+            ImGui::TextUnformatted("В сколько колонок расположить");
+            ImGui::InputInt("###edit_image_columns:{}"_format(index).c_str(), &columns, 1, 1);
+            clamp_var(columns, 1, 20);
+
+            int image_index = 0;
+            for (Image &image : images)
+            {
+                ImGui::Bullet();
+                ImGui::TextUnformatted("Изображение {}"_format(++image_index).c_str());
+
+                ImGui::Indent();
+                FINALLY( ImGui::Unindent(); )
+
+                ImGui::TextUnformatted("Имя файла");
+                ImGui::InputText("###edit_image_text:{}:{}"_format(index, image_index).c_str(), &image.file_name);
+                ImGui::TextUnformatted("Всплывающая подсказка (не обязательно)");
+                ImGui::InputText("###edit_image_tooltip:{}:{}"_format(index, image_index).c_str(), &image.tooltip);
+                ImGui::Spacing();
+            }
+            if (ImGui::Button("+"))
+                images.emplace_back();
+            if (images.size() > 0)
+            {
+                ImGui::SameLine();
+                if (ImGui::Button("-"))
+                    images.pop_back();
             }
         }
     };

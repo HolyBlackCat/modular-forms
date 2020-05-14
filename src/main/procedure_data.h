@@ -9,6 +9,7 @@
 #include "reflection/short_macros.h"
 #include "utils/shared_library.h"
 
+#include "main/images.h"
 #include "main/widgets.h"
 
 namespace Data
@@ -29,7 +30,6 @@ namespace Data
         MEMBERS(
             DECL(std::string) id
             DECL(std::string) name
-            DECL(bool INIT=false ATTR Refl::Optional) optional
         )
 
         external_func_ptr_t ptr = 0;
@@ -53,11 +53,12 @@ namespace Data
             DECL(std::string) name
             DECL(int INIT=-1) current_step
             DECL(bool INIT=false ATTR Refl::Optional) confirm_exit
-            DECL(std::optional<std::vector<Library>>) libraries
+            DECL(std::vector<Library> ATTR Refl::Optional) libraries
             DECL(std::vector<ProcedureStep>) steps
         )
 
         fs::path resource_dir;
+        mutable Image::Cache image_cache;
 
         bool IsTemplate() const
         {

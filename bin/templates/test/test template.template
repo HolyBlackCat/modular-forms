@@ -1,8 +1,8 @@
 {
-    name = "Название процедуры",
+    name = "Тестирование оборудования",
     current_step = -1,
-    confirm_exit = false,
-    libraries = :[
+    confirm_exit = true,
+    libraries = [
         {
             id = "main_lib",
             file = "test/a",
@@ -10,17 +10,10 @@
                 {
                     id = "func1",
                     name = "foo",
-                    optional = false,
                 },
                 {
                     id = "func2",
                     name = "bar",
-                    optional = false,
-                },
-                {
-                    id = "func3",
-                    name = "baz",
-                    optional = true,
                 },
             ],
         },
@@ -69,10 +62,7 @@
                         {
                             label = "Кнопка 3",
                             tooltip = "",
-                            function = :{
-                                library_id = "main_lib",
-                                func_id = "func3",
-                            },
+                            function = ?,
                         },
                     ],
                     packed = false,
@@ -338,15 +328,6 @@
         },
         {
             name = "Название шага 5",
-            confirm = false,
-            widgets = [
-                Text {
-                    text = "Текст",
-                },
-            ],
-        },
-        {
-            name = "Название шага 6",
             confirm = false,
             widgets = [
                 Text {
