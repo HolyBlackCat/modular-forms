@@ -287,7 +287,7 @@ namespace Widgets
             }
         }
 
-        void DisplayEditor(Data::Procedure &proc, int index) override
+        void DisplayEditor(Data::Procedure &, int index) override
         {
             ImGui::Checkbox("Располагать компактно###edit_button_compactness:{}"_format(index).c_str(), &packed);
 
@@ -322,20 +322,6 @@ namespace Widgets
 
                     if (ImGui::SmallButton("Отвязать функцию"))
                         button.function.reset();
-
-                    ImGui::SameLine();
-                    if (ImGui::SmallButton("Вызвать функцию"))
-                    {
-                        try
-                        {
-                            Init(proc);
-                            button.SimulatePress();
-                        }
-                        catch (std::exception &e)
-                        {
-                            Interface::MessageBox(Interface::MessageBoxType::error, "Invalid function", "Unable to call function:\n{}"_format(e.what()).c_str());
-                        }
-                    }
                 }
                 ImGui::Spacing();
             }

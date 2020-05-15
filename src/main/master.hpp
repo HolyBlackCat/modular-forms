@@ -11,7 +11,6 @@
 #include <vector>
 
 #include "graphics/complete.h"
-#include "graphics/texture.h"
 #include "input/complete.h"
 #include "interface/gui.h"
 #include "interface/window.h"

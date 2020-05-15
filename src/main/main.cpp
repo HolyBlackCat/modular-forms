@@ -337,7 +337,10 @@ struct StateMain : State
                         {
                             bool ok = Tab_Save();
                             if (!ok)
+                            {
                                 got_path = false;
+                                Interface::MessageBox(Interface::MessageBoxType::error, "Error", "Unable to write file.");
+                            }
                         }
 
                         if (!got_path)
@@ -373,10 +376,7 @@ struct StateMain : State
 
             tab.proc.current_step++;
 
-            { // Write to file
-                Stream::Output output_stream(tab.path.string());
-                Refl::ToString(tab.proc, output_stream, Refl::ToStringOptions::Pretty());
-            }
+            Tab_Save();
 
             if (tab.IsFinished()) // Sic!
                 return;
@@ -667,7 +667,7 @@ struct StateMain : State
                             int bottom_panel_h = ImGui::GetFrameHeightWithSpacing();
                             // ImGui::BeginChildFrame(ImGui::GetID(Str("widgets:", tab.proc.current_step).c_str()), fvec2(0, -bottom_panel_h), 1);
                             ImGui::BeginChildFrame(ImGui::GetID(Str("widgets{}:", tab.now_previewing_template ? "" : "_editing", tab.proc.current_step).c_str()),
-                                ivec2(ImGui::GetContentRegionAvail()) + ivec2(ImGui::GetStyle().WindowPadding.x, -bottom_panel_h), 1);
+                                ivec2(ImGui::GetContentRegionAvail()) + ivec2(ImGui::GetStyle().WindowPadding.x, tab.IsTemplate() ? 0 : -bottom_panel_h), 1);
 
 
                             auto InsertWidgetButton = [&](int index)
